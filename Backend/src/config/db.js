@@ -19,6 +19,25 @@ const connectDB = async () => {
             await admin.save();
             console.log('👑 Default Super Admin seeded successfully: admin@zayafly.com');
         }
+
+        // Automatically seed active Demo Agent if none exists in the new cloud database
+        const Agent = require('../Models/Agent.model');
+        const agentCount = await Agent.countDocuments();
+        if (agentCount === 0) {
+            const agent = new Agent({
+                agentName: 'Demo Agent',
+                agencyName: 'GoyaFly Demo Agency',
+                mobileNumber: '9876543210',
+                emailAddress: 'agent@goyafly.com',
+                password: 'agent123',
+                address: '123 Cloud Street, Tech City',
+                kycStatus: 'APPROVED',
+                isKycVerified: true,
+                walletBalance: 50000
+            });
+            await agent.save();
+            console.log('💼 Default Demo Agent seeded successfully: agent@goyafly.com');
+        }
     } catch (error) {
         console.error(`❌ Error: ${error.message}`);
         // Exit the process with failure if the database doesn't connect
