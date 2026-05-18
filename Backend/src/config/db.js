@@ -51,6 +51,7 @@ const connectDB = async () => {
                 if (!exists) {
                     const agentData = { ...la };
                     delete agentData._id;
+                    delete agentData.agentCode; // PREVENT E11000 DUPLICATE KEY ERROR! Let pre-save hook generate a unique code.
                     // Automatically approve KYC so you can log in instantly without 401 error!
                     agentData.kycStatus = 'APPROVED';
                     agentData.isKycVerified = true;
