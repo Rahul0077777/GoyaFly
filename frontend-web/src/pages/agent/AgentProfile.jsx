@@ -82,7 +82,7 @@ const AgentProfile = () => {
                         <div className="absolute top-0 left-0 w-full h-1 sm:h-2 bg-primary-500"></div>
                         <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-gray-50 rounded-lg sm:rounded-xl md:rounded-[2rem] flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-black text-primary-100 mb-4 sm:mb-6 border-4 border-dashed border-gray-100 overflow-hidden">
                             {profile.logo ? (
-                                <img src={`http://localhost:5000${profile.logo}`} alt="Agency Logo" className="w-full h-full object-contain p-2" />
+                                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${profile.logo}`} alt="Agency Logo" className="w-full h-full object-contain p-2" />
                             ) : (
                                 profile.agencyName.substring(0,1).toUpperCase()
                             )}

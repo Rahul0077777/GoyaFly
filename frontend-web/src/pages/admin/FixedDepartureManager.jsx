@@ -263,7 +263,7 @@ const FixedDepartureManager = () => {
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl overflow-hidden shadow-inner">
                                     {flight.airlineLogo ? (
-                                        <img src={`${process.env.BACKEND_URL || 'http://localhost:5000'}/${flight.airlineLogo}`} alt={flight.airlineName} className="w-full h-full object-contain p-1" />
+                                        <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/${flight.airlineLogo}`} alt={flight.airlineName} className="w-full h-full object-contain p-1" />
                                     ) : (
                                         <FaPlane className="text-[#1D4171]" />
                                     )}
@@ -382,7 +382,7 @@ const FixedDepartureManager = () => {
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Airline / Flight Logo (Optional)</label>
                                 <div className="flex items-center gap-4">
                                     {editingFlight && editingFlight.airlineLogo && !formData.airlineLogo && (
-                                        <img src={`${process.env.BACKEND_URL || 'http://localhost:5000'}/${editingFlight.airlineLogo}`} alt="Current Logo" className="w-12 h-12 object-contain bg-white p-1 rounded-xl border border-slate-200 shadow-sm" />
+                                        <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/${editingFlight.airlineLogo}`} alt="Current Logo" className="w-12 h-12 object-contain bg-white p-1 rounded-xl border border-slate-200 shadow-sm" />
                                     )}
                                     {formData.airlineLogo && (
                                         <div className="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-center font-black text-xs shadow-sm">

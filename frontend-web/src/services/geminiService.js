@@ -1,5 +1,5 @@
 // Routes all AI requests through the backend — key stays server-side, no 429 from browser
-const BACKEND_URL = 'http://localhost:5000/api/ai/chat';
+const BACKEND_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/ai/chat`;
 
 export const sendMessage = async (history, newMessage) => {
   const response = await fetch(BACKEND_URL, {
