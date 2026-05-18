@@ -66,6 +66,14 @@ const connectDB = async () => {
         // Also ensure any existing migrated agents have their KYC approved automatically
         await Agent.updateMany({ kycStatus: 'PENDING' }, { $set: { kycStatus: 'APPROVED', isKycVerified: true } });
         console.log('✅ Verified all migrated agents are KYC Approved');
+
+        // Reset all agent passwords to agent123 so the user knows exactly what password works!
+        const allAgents = await Agent.find({});
+        for (const a of allAgents) {
+            a.password = 'agent123';
+            await a.save();
+        }
+        console.log('🔑 Verified all agent passwords are set to: agent123');
     } catch (error) {
         console.error(`❌ Error: ${error.message}`);
         // Exit the process with failure if the database doesn't connect
