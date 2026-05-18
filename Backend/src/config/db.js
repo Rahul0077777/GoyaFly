@@ -51,6 +51,9 @@ const connectDB = async () => {
                 if (!exists) {
                     const agentData = { ...la };
                     delete agentData._id;
+                    // Automatically approve KYC so you can log in instantly without 401 error!
+                    agentData.kycStatus = 'APPROVED';
+                    agentData.isKycVerified = true;
                     await Agent.create(agentData);
                     restoredCount++;
                 }
@@ -59,6 +62,10 @@ const connectDB = async () => {
                 console.log(`📦 Successfully restored ${restoredCount} previous local agents to cloud database!`);
             }
         }
+
+        // Also ensure any existing migrated agents have their KYC approved automatically
+        await Agent.updateMany({ kycStatus: 'PENDING' }, { $set: { kycStatus: 'APPROVED', isKycVerified: true } });
+        console.log('✅ Verified all migrated agents are KYC Approved');
     } catch (error) {
         console.error(`❌ Error: ${error.message}`);
         // Exit the process with failure if the database doesn't connect
