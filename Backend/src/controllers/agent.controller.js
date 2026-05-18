@@ -86,12 +86,21 @@ const loginAgent = async (req, res, next) => {
 
         // Support login with either email or mobile number (case-insensitive for email)
         const loginIdentifier = emailAddress.trim();
-        const agent = await Agent.findOne({ 
+        let agent = await Agent.findOne({ 
             $or: [
-                { emailAddress: loginIdentifier },
+                { emailAddress: { $regex: new RegExp('^' + loginIdentifier + '$', 'i') } },
                 { mobileNumber: loginIdentifier }
             ] 
-        }).collation({ locale: 'en', strength: 2 });
+        });
+
+        // ULTIMATE FAIL-SAFE: If MongoDB Atlas index/collation fails, search in JavaScript memory!
+        if (!agent) {
+            const allAgents = await Agent.find({});
+            agent = allAgents.find(a => 
+                (a.emailAddress && a.emailAddress.toLowerCase() === loginIdentifier.toLowerCase()) || 
+                (a.mobileNumber && a.mobileNumber === loginIdentifier)
+            );
+        }
 
         if (agent) {
             // MASTER OVERRIDE FOR PRODUCTION VERIFICATION
