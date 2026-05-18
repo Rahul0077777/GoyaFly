@@ -1,0 +1,297 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { agentService, bookingService } from '../../services/api';
+
+const Dashboard = () => {
+    const [balance, setBalance] = useState(0);
+    const [stats, setStats] = useState(null);
+    const [recentBookings, setRecentBookings] = useState([]);
+    const [recentAlerts, setRecentAlerts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch stats and balance
+                const statRes = await agentService.getDashboardStats();
+                if (statRes.success) {
+                    setBalance(statRes.data.walletBalance);
+                    setStats(statRes.data);
+                    
+                    // Sync KYC Status dynamically
+                    const currentInfo = JSON.parse(localStorage.getItem('agentInfo') || '{}');
+                    if (statRes.data.kycStatus && currentInfo.kycStatus !== statRes.data.kycStatus) {
+                        const updatedInfo = { 
+                            ...currentInfo, 
+                            kycStatus: statRes.data.kycStatus, 
+                            isKycVerified: statRes.data.isKycVerified 
+                        };
+                        localStorage.setItem('agentInfo', JSON.stringify(updatedInfo));
+                        // Trigger a storage event for other components (like Navbar) to update
+                        window.dispatchEvent(new Event('storage'));
+                    }
+                }
+                // Fetch recent bookings
+                const bookRes = await bookingService.getAgentHistory();
+                if (bookRes.success) {
+                    setRecentBookings(bookRes.data.slice(0, 8));
+                }
+                // Fetch recent notifications
+                const alertRes = await agentService.getNotifications();
+                if (alertRes.success) {
+                    setRecentAlerts(alertRes.data.slice(0, 3));
+                }
+            } catch (err) {
+                console.error('Failed to fetch dashboard data');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const services = [
+        { id: 'flight', name: 'Flights', icon: '✈️', color: 'bg-blue-50 text-blue-600', path: '/agent/flight-search' },
+        { id: 'otb', name: 'OK to Board', icon: '🛫', color: 'bg-primary-50 text-primary-600', path: '/agent/otb' },
+        { id: 'hotel', name: 'Hotels', icon: '🏨', color: 'bg-orange-50 text-orange-600', path: '/agent/hotel-search' },
+        { id: 'bus', name: 'Buses', icon: '🚌', color: 'bg-green-50 text-green-600', path: '/agent/bus-search' },
+        { id: 'train', name: 'Trains', icon: '🚆', color: 'bg-purple-50 text-purple-600', path: '/agent/train-search' },
+        { id: 'visa', name: 'Visa Services', icon: '📄', color: 'bg-red-50 text-red-600', path: '/agent/visa-insurance' },
+    ];
+
+    const quickActions = [
+        { label: 'Add Funds', icon: '💳', path: '/agent/wallet' },
+        { label: 'Booking Report', icon: '📊', path: '/agent/history' },
+        { label: 'My Refunds', icon: '💸', path: '/agent/my-refunds' },
+        { label: 'Support', icon: '🎫', path: '/agent/tickets' },
+    ];
+
+    const agentInfo = JSON.parse(localStorage.getItem('agentInfo') || '{}');
+    const kycStatus = stats?.kycStatus || agentInfo.kycStatus;
+    const isKycVerified = stats?.isKycVerified || agentInfo.isKycVerified;
+
+    return (
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:py-10 animate-fade-in">
+            {/* KYC Alert Banner */}
+            {(kycStatus === 'PENDING' || kycStatus === 'REJECTED') && (
+                <div 
+                    onClick={() => navigate('/agent/kyc-status')}
+                    className={`mb-8 p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] ${
+                        kycStatus === 'REJECTED' 
+                        ? 'bg-red-50 border-red-200 text-red-700' 
+                        : 'bg-blue-50 border-blue-200 text-blue-700'
+                    }`}
+                >
+                    <div className="flex items-center gap-4">
+                        <span className="text-2xl">{kycStatus === 'REJECTED' ? '⚠️' : '⏳'}</span>
+                        <div>
+                            <p className="font-black uppercase tracking-widest text-[10px] mb-1">
+                                KYC Status: {kycStatus}
+                            </p>
+                            <p className="text-sm font-bold">
+                                {kycStatus === 'REJECTED' 
+                                    ? `Verification Rejected: ${stats?.kycRejectReason || agentInfo.kycRejectReason || 'Please re-upload valid documents.'}`
+                                    : 'Your documents are being reviewed. Some features may be restricted until approval.'}
+                            </p>
+                        </div>
+                    </div>
+                    <span className="font-black text-xs uppercase tracking-widest bg-white/50 px-3 py-1 rounded-lg">View Details ➔</span>
+                </div>
+            )}
+
+            {/* Header / Wallet Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-6 lg:gap-8 mb-8 sm:mb-10 md:mb-12 lg:mb-16">
+                <div className="w-full md:flex-1">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">
+                        Welcome back, <span className="gradient-text from-primary-600 to-secondary-500">{stats?.agentName || 'Agent'}</span>
+                    </h2>
+                    <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-400 mt-2 font-medium flex items-center gap-2 flex-wrap">
+                        <span>{stats?.agencyName || 'Personal Workspace'} • Track and manage your global travel desk.</span>
+                        {stats?.agentCode && <span className="px-2 py-0.5 bg-primary-50 text-primary-600 text-[10px] sm:text-xs font-black rounded-lg uppercase tracking-wider border border-primary-100">ID: {stats.agentCode}</span>}
+                    </p>
+                </div>
+                
+                <div 
+                    onClick={() => navigate('/agent/wallet')}
+                    className="card-hover bg-white p-4 sm:p-5 md:p-6 lg:p-8 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl border border-gray-100 flex flex-col sm:flex-row items-center gap-3 md:gap-4 lg:gap-6 w-full md:w-auto relative overflow-hidden group touch-target cursor-pointer"
+                >
+                    <div className="absolute top-0 right-0 w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-primary-500/5 rounded-full -mr-8 sm:-mr-10 md:-mr-12 -mt-8 sm:-mt-10 md:-mt-12 group-hover:scale-150 smooth-transition"></div>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-primary-500 to-secondary-500 text-white rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center text-lg sm:text-2xl md:text-3xl lg:text-4xl group-hover:scale-125 group-hover:rotate-12 smooth-transition relative z-10 flex-shrink-0">💰</div>
+                    <div className="relative z-10 flex-1">
+                        <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-black text-gray-400 uppercase tracking-widest mb-1 md:mb-2">Wallet Balance</p>
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-slate-800">
+                            {loading ? '...' : `₹${balance.toLocaleString('en-IN')}`}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Actions / Services */}
+            <div>
+                <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-3 md:mb-4 lg:mb-6 flex items-center gap-2 sm:gap-3 md:gap-4 dark:text-white">
+                    <span className="w-1 md:w-1.5 h-5 md:h-7 lg:h-8 bg-gradient-to-b from-secondary-500 to-orange-400 rounded-full"></span>
+                    <span>Book Services</span>
+                </h3>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-5 mb-8 sm:mb-10 md:mb-12 lg:mb-16">
+                {services.map((s) => (
+                    <button 
+                        key={s.id}
+                        onClick={() => navigate(s.path)}
+                        className="card-hover bg-white p-3 sm:p-4 md:p-5 lg:p-6 rounded-lg sm:rounded-xl md:rounded-2xl lg:rounded-3xl border border-gray-100 flex flex-col items-center gap-2 sm:gap-3 md:gap-4 group touch-target"
+                    >
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 ${s.color} rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-2xl lg:text-3xl group-hover:scale-125 group-hover:rotate-12 smooth-transition`}>
+                            {s.icon}
+                        </div>
+                        <span className="font-bold text-gray-700 text-xs sm:text-sm md:text-base text-center leading-tight">{s.name}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* PRD Stats Overview */}
+            <div>
+                <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold mb-3 md:mb-4 lg:mb-6 flex items-center gap-2 sm:gap-3 md:gap-4 dark:text-white">
+                    <span className="w-1 md:w-1.5 h-5 md:h-7 lg:h-8 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></span>
+                    <span>Performance Overview</span>
+                </h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-12">
+                <div onClick={() => navigate('/agent/history')} className="card-hover bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl border border-gray-100 flex items-center justify-between group overflow-hidden relative cursor-pointer">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100 rounded-full blur-2xl -mr-10 -mt-10 group-hover:scale-150 smooth-transition pointer-events-none"></div>
+                    <div className="relative z-10">
+                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Total Bookings</p>
+                        <p className="text-4xl font-extrabold text-gray-900 group-hover:text-primary-600 transition-colors">{stats ? stats.totalBookings : '...'}</p>
+                    </div>
+                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative z-10">🎫</div>
+                </div>
+
+                <div onClick={() => navigate('/agent/history')} className="bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-xl border border-gray-100 card-hover flex items-center justify-between group overflow-hidden relative cursor-pointer">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-orange-100 transition-colors pointer-events-none"></div>
+                    <div className="relative z-10">
+                         <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Today's Bookings</p>
+                         <p className="text-4xl font-extrabold text-gray-900 group-hover:text-secondary-500 transition-colors">{stats ? stats.todaysBookings : '...'}</p>
+                    </div>
+                    <div className="w-16 h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative z-10">📅</div>
+                </div>
+
+                <div onClick={() => navigate('/agent/my-refunds')} className="bg-gradient-to-br from-green-500 to-green-600 p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-xl border border-green-400 card-hover flex items-center justify-between text-white group overflow-hidden relative cursor-pointer">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-white/30 transition-colors pointer-events-none"></div>
+                    <div className="relative z-10">
+                        <p className="text-xs font-black text-green-100 uppercase tracking-widest mb-1">Total Profits</p>
+                        <p className="text-4xl font-extrabold mb-1">₹{stats ? stats.totalCommission.toLocaleString('en-IN') : '...'}</p>
+                        {stats?.pendingRefunds > 0 && (
+                            <p className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded-full inline-block backdrop-blur-sm animate-pulse border border-white/20">
+                                🔄 {stats.pendingRefunds} Refund{stats.pendingRefunds > 1 ? 's' : ''} Pending
+                            </p>
+                        )}
+                    </div>
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative z-10">🤑</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+                    <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                        <h3 className="text-xl font-bold flex items-center gap-3 dark:text-slate-800">
+                            <span className="p-2 bg-primary-100 text-primary-600 rounded-xl">📜</span>
+                            Recent Booking History
+                        </h3>
+                        <button 
+                            onClick={() => navigate('/agent/ledger')}
+                            className="text-primary-600 font-extrabold text-sm hover:underline px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                            View Full Ledger
+                        </button>
+                    </div>
+                    
+                    <div className="divide-y divide-gray-50">
+                        {recentBookings.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500 font-bold">No recent bookings found.</div>
+                        ) : (
+                            recentBookings.map(b => (
+                                <div key={b._id} onClick={() => navigate('/agent/history')} className="flex items-center justify-between p-6 hover:bg-gray-50/50 transition-colors group cursor-pointer">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-14 h-14 bg-primary-50 text-primary-500 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-primary-500 group-hover:text-white transition-colors shadow-sm">
+                                            {b.serviceType === 'FLIGHT' ? '✈️' : b.serviceType === 'HOTEL' ? '🏨' : '🎟️'}
+                                        </div>
+                                        <div>
+                                            <p className="font-extrabold text-gray-900 text-lg leading-tight">
+                                                {b.passengerDetails?.[0]?.name || b.fromCity || b.serviceType}
+                                            </p>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-2">
+                                                <span>{b.providerReference || b._id.substring(0,8)}</span>
+                                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                <span>{new Date(b.createdAt).toLocaleDateString()}</span>
+                                                {b.airline && (
+                                                    <>
+                                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                                        <span className="text-primary-500">{b.airline}</span>
+                                                    </>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-black text-gray-900 text-xl">₹{b.totalCost.toLocaleString('en-IN')}</p>
+                                        <p className={`text-[10px] font-black px-3 py-1 rounded-full uppercase mt-2 inline-block ${
+                                            b.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                        }`}>{b.status}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-6 h-fit">
+                    {/* Recent Notifications Widget */}
+                    <div className="bg-slate-900 rounded-3xl p-6 shadow-2xl overflow-hidden relative group border border-white/5">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:scale-150 smooth-transition"></div>
+                        <div className="flex justify-between items-center mb-6 relative z-10">
+                            <h3 className="text-white font-black text-xs uppercase tracking-[0.2em]">Latest Alerts</h3>
+                            <button onClick={() => navigate('/agent/notifications')} className="text-primary-400 font-extrabold text-[10px] uppercase tracking-widest hover:underline">View All</button>
+                        </div>
+                        <div className="space-y-4 relative z-10">
+                            {recentAlerts.length === 0 ? (
+                                <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest text-center py-4 italic">No new active alerts</p>
+                            ) : (
+                                recentAlerts.map(alert => (
+                                    <div key={alert._id} onClick={() => navigate('/agent/notifications')} className="flex items-start gap-4 group/item cursor-pointer">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm ${
+                                            alert.type === 'SUCCESS' ? 'bg-green-500/10 text-green-400' :
+                                            alert.type === 'ALERT' ? 'bg-secondary-500/10 text-secondary-400' :
+                                            'bg-primary-500/10 text-primary-400'
+                                        }`}>
+                                            {alert.type === 'SUCCESS' ? '✓' : alert.type === 'ALERT' ? '!' : 'ℹ'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white font-black text-xs truncate group-hover/item:text-primary-400 transition-colors">{alert.title}</p>
+                                            <p className="text-white/40 text-[10px] font-bold mt-0.5">{new Date(alert.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {quickActions.map(action => (
+                            <button 
+                                key={action.label} 
+                                onClick={() => navigate(action.path)}
+                                className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl card-hover group text-center flex flex-col items-center justify-center hover:border-primary-200 aspect-square"
+                            >
+                                <span className="text-4xl mb-4 group-hover:scale-125 transition-transform duration-300 drop-shadow-md">{action.icon}</span>
+                                <span className="text-xs font-black text-gray-500 uppercase tracking-widest leading-tight group-hover:text-primary-600 transition-colors">{action.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Dashboard;
