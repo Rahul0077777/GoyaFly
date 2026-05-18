@@ -38,6 +38,27 @@ const connectDB = async () => {
             await agent.save();
             console.log('💼 Default Demo Agent seeded successfully: agent@goyafly.com');
         }
+
+        // Automatically restore previous local agents from backup if they don't exist in cloud
+        const fs = require('fs');
+        const path = require('path');
+        const backupPath = path.join(__dirname, '../data/local_agents_backup.json');
+        if (fs.existsSync(backupPath)) {
+            const localAgents = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+            let restoredCount = 0;
+            for (const la of localAgents) {
+                const exists = await Agent.findOne({ $or: [{ emailAddress: la.emailAddress }, { mobileNumber: la.mobileNumber }] });
+                if (!exists) {
+                    const agentData = { ...la };
+                    delete agentData._id;
+                    await Agent.create(agentData);
+                    restoredCount++;
+                }
+            }
+            if (restoredCount > 0) {
+                console.log(`📦 Successfully restored ${restoredCount} previous local agents to cloud database!`);
+            }
+        }
     } catch (error) {
         console.error(`❌ Error: ${error.message}`);
         // Exit the process with failure if the database doesn't connect
