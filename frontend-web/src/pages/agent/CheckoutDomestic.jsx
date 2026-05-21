@@ -16,6 +16,7 @@ const CheckoutDomestic = ({ bookingData }) => {
     const [selectedMeals, setSelectedMeals] = useState({}); // { paxIndex: mealCode }
     const [loadingBalance, setLoadingBalance] = useState(true);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [showItineraryMobile, setShowItineraryMobile] = useState(false);
 
     const paxBreakdown = (bookingData.passengers && typeof bookingData.passengers === 'object')
         ? bookingData.passengers
@@ -200,45 +201,59 @@ const CheckoutDomestic = ({ bookingData }) => {
     return (
         <div className="flex-1 bg-[#f8fafc] min-h-[calc(100vh-64px)] pb-12 overflow-y-auto">
             {/* Header with Step Indicator */}
-            <div className="bg-[#1D4171] w-full pt-10 pb-36 px-6">
+            <div className="bg-[#1D4171] w-full pt-8 sm:pt-10 pb-32 sm:pb-36 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <div className="flex items-center gap-3 mb-3">
                             <span className="bg-[#48A0D4]/20 text-[#48A0D4] text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border border-[#48A0D4]/30">DOMESTIC FLIGHT</span>
                         </div>
-                        <h1 className="text-white text-4xl font-bold tracking-tight mb-2">Checkout</h1>
-                        <p className="text-slate-200 text-sm max-w-md">Complete your booking with professional GDS-integrated processing.</p>
+                        <h1 className="text-white text-3xl sm:text-4xl font-bold tracking-tight mb-2">Checkout</h1>
+                        <p className="text-slate-200 text-xs sm:text-sm max-w-md">Complete your booking with professional GDS-integrated processing.</p>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-slate-800/50 p-2 rounded-2xl border border-slate-700/50">
+                    <div className="flex items-center gap-2 sm:gap-4 bg-slate-800/50 p-1.5 sm:p-2 rounded-2xl border border-slate-700/50 overflow-x-auto no-scrollbar">
                         {[
                             { step: 1, label: 'Travellers' },
                             { step: 2, label: 'Add-ons' },
                             { step: 3, label: 'Review' }
                         ].map((s, idx) => (
                             <React.Fragment key={s.step}>
-                                <div className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all ${currentStep === s.step ? 'bg-[#48A0D4] shadow-lg shadow-[#48A0D4]/20' : ''}`}>
-                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${currentStep === s.step ? 'bg-white text-[#1D4171]' : 'bg-slate-700 text-slate-400'}`}>
+                                <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-xl transition-all whitespace-nowrap ${currentStep === s.step ? 'bg-[#48A0D4] shadow-lg shadow-[#48A0D4]/20' : ''}`}>
+                                    <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black ${currentStep === s.step ? 'bg-white text-[#1D4171]' : 'bg-slate-700 text-slate-400'}`}>
                                         {s.step}
                                     </span>
-                                    <span className={`text-xs font-black uppercase tracking-wider ${currentStep === s.step ? 'text-white' : 'text-slate-500'}`}>
+                                    <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider hidden sm:inline ${currentStep === s.step ? 'text-white' : 'text-slate-500'}`}>
                                         {s.label}
                                     </span>
                                 </div>
-                                {idx < 2 && <div className="w-8 h-[2px] bg-slate-700"></div>}
+                                {idx < 2 && <div className="w-4 sm:w-8 h-[2px] bg-slate-700 shrink-0"></div>}
                             </React.Fragment>
                         ))}
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 -mt-20 relative z-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-16 sm:-mt-20 relative z-10">
                 <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-                    {/* LEFT COLUMN: ITINERARY REVIEW & FARE summary (Always visible) */}
-                    <div className="w-full lg:w-[35%] space-y-6 lg:sticky top-6">
-                        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                            <div className="bg-[#2c3e50] p-6">
+                    {/* LEFT COLUMN: ITINERARY REVIEW & FARE summary */}
+                    <div className="w-full lg:w-[35%] space-y-6 lg:sticky top-6 lg:order-last">
+                        
+                        {/* Mobile Toggle Header */}
+                        <div className="lg:hidden bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-5 flex items-center justify-between cursor-pointer" onClick={() => setShowItineraryMobile(!showItineraryMobile)}>
+                            <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Flight Summary</span>
+                                <h3 className="text-sm font-bold text-slate-800">{bookingData.from} ➔ {bookingData.to}</h3>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg font-black text-[#F07E21]">₹{totalBookingPrice.toLocaleString()}</span>
+                                <span className="text-slate-400 text-xs">{showItineraryMobile ? '▲' : '▼'}</span>
+                            </div>
+                        </div>
+
+                        {/* Full Details Panel */}
+                        <div className={`bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden ${showItineraryMobile ? 'block' : 'hidden lg:block'}`}>
+                            <div className="bg-[#2c3e50] p-5 sm:p-6">
                                 <h2 className="text-white font-bold text-lg mb-1 flex items-center justify-between">
                                     Flight Review
                                     <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-black uppercase tracking-widest">{bookingData.details.date}</span>
@@ -345,11 +360,11 @@ const CheckoutDomestic = ({ bookingData }) => {
                         {currentStep === 1 && (
                             <div className="space-y-6">
                                 {passengersList.map((p, index) => (
-                                    <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+                                    <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
                                         <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-8">
-                                            <h3 className="text-[16px] font-black text-slate-800 uppercase tracking-widest">Traveller {index + 1} {index === 0 ? '(Adult - Lead)' : '(Adult)'}</h3>
-                                            <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full uppercase tracking-widest border border-slate-100">Pax Type: Adult</span>
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">
+                                            <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">Traveller {index + 1} {index === 0 ? '(Lead)' : ''}</h3>
+                                            <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full uppercase tracking-widest border border-slate-100">{p.pType === 'C' ? 'Child' : p.pType === 'I' ? 'Infant' : 'Adult'}</span>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -381,19 +396,19 @@ const CheckoutDomestic = ({ bookingData }) => {
                                             <div className="mt-6 pt-6 border-t border-slate-50 animate-in slide-in-from-top-4 duration-500">
                                                 <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col md:flex-row md:items-center gap-4">
                                                     <div className="flex-1">
-                                                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 block">PAN Number (Mandatory for this fare) *</label>
-                                                        <input value={firstPaxPan} onChange={(e) => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full border-2 border-amber-200 rounded-lg px-4 h-[52px] text-sm font-black text-slate-800 focus:border-amber-500 outline-none transition-all placeholder:text-amber-200 uppercase" />
+                                                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 block">PAN Number (Mandatory) *</label>
+                                                        <input value={firstPaxPan} onChange={(e) => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full border-2 border-amber-200 rounded-lg px-4 h-[48px] sm:h-[52px] text-sm font-black text-slate-800 focus:border-amber-500 outline-none transition-all placeholder:text-amber-200 uppercase" />
                                                     </div>
-                                                    <p className="text-[10px] text-amber-600 font-bold max-w-[200px]">GDS requires PAN details for the lead passenger to process this specific fare.</p>
+                                                    <p className="text-[10px] text-amber-600 font-bold max-w-[200px]">GDS requires PAN details for the lead passenger.</p>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 ))}
 
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-2 h-full bg-[#eb5a0c]"></div>
-                                    <h3 className="text-[16px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-6 mb-8">Booking Notifications</h3>
+                                    <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">Booking Notifications</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="flex flex-col">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Mobile Number *</label>
@@ -410,11 +425,11 @@ const CheckoutDomestic = ({ bookingData }) => {
                                 </div>
 
                                 {/* GST Details Section */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
-                                    <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-8">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">
                                         <div>
-                                            <h3 className="text-[16px] font-black text-slate-800 uppercase tracking-widest">GST Details</h3>
+                                            <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">GST Details</h3>
                                             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Optional for Tax Invoice</p>
                                         </div>
                                     </div>
@@ -464,11 +479,11 @@ const CheckoutDomestic = ({ bookingData }) => {
                                 ) : (
                                     <div className="space-y-6">
                                         {/* SSR Selection Section */}
-                                        <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                                            <h3 className="text-xl font-black text-slate-800 mb-2">Customize Flight Experience</h3>
-                                            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">Select preferred seats and meal choices</p>
+                                        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm">
+                                            <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-2">Customize Flight Experience</h3>
+                                            <p className="text-slate-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-6 sm:mb-8">Select preferred seats and meal choices</p>
 
-                                            <div className="space-y-12">
+                                            <div className="space-y-8 sm:space-y-12">
                                                 {passengersList.map((p, idx) => (
                                                     <div key={idx} className="border-t border-slate-100 pt-8 first:border-0 first:pt-0">
                                                         <div className="flex items-center gap-3 mb-6">
@@ -530,11 +545,11 @@ const CheckoutDomestic = ({ bookingData }) => {
 
                         {currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                                    <h3 className="text-xl font-black text-slate-800 mb-2">Final Review & Payment</h3>
-                                    <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">Confirm all details before securing the fare</p>
+                                <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-sm">
+                                    <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-2">Final Review & Payment</h3>
+                                    <p className="text-slate-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest mb-6 sm:mb-8">Confirm all details before securing the fare</p>
 
-                                    <div className="space-y-6 mb-10">
+                                    <div className="space-y-6 mb-8 sm:mb-10">
                                         <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl">
                                             <div className="flex items-center gap-3 mb-2 text-emerald-700 font-black text-xs uppercase tracking-widest">
                                                 <span>✔️</span> PRICE VERIFIED & SECURED

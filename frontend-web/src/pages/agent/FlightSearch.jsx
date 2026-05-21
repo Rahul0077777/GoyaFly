@@ -4,6 +4,7 @@ import { bookingService } from '../../services/api';
 import { toast } from 'react-toastify';
 import GoyaflyLoader from '../../components/GoyaflyLoader';
 import InspirationLoader from '../../components/InspirationLoader';
+import heroBg from '../../assets/hero_bg.png';
 
 const POPULAR_AIRPORTS = [
     { code: 'DEL', city: 'New Delhi', label: 'Indira Gandhi Intl (DEL)' },
@@ -58,9 +59,32 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
     useEffect(() => {
         if (codeValue) {
             const found = airports.find(a => a.code === codeValue);
-            if (found) setSelectedLabel(found.city);
+            if (found) {
+                setSelectedLabel(found.city);
+            } else {
+                bookingService.searchAirports(codeValue).then(res => {
+                    if (res.success && res.data) {
+                        const resolved = res.data.find(a => a.code === codeValue);
+                        if (resolved) {
+                            setAirports(prev => {
+                                if (prev.some(x => x.code === resolved.code)) return prev;
+                                return [...prev, resolved];
+                            });
+                            setSelectedLabel(resolved.city);
+                        } else {
+                            setSelectedLabel(codeValue);
+                        }
+                    } else {
+                        setSelectedLabel(codeValue);
+                    }
+                }).catch(() => {
+                    setSelectedLabel(codeValue);
+                });
+            }
+        } else {
+            setSelectedLabel('');
         }
-    }, [codeValue, airports]);
+    }, [codeValue]);
 
     return (
         <div className="flex-1 relative">
@@ -94,6 +118,14 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
+const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts;
+    return `${month}/${day}/${year}`;
+};
+
 const FlightSearch = () => {
     const [tripType, setTripType] = useState('oneWay');
     const [from, setFrom] = useState('');
@@ -322,80 +354,245 @@ const FlightSearch = () => {
     };
 
     return (
-        <div className="flex-1 min-h-screen" style={{ background: '#F4F4F4', fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+        <div className="flex-1 min-h-screen bg-white -m-4 sm:-m-6 lg:-m-8 pb-12" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
 
             {/* ── HEADER ───────────────────────────────────────────────────── */}
-            <div style={{ background: '#1B2131' }} className="w-full pt-8 pb-32 sm:pb-28 px-4 sm:px-6">
-                <div className="max-w-7xl mx-auto">
-                    <h1 className="text-white text-2xl sm:text-[28px] font-black mb-1">Book Flights</h1>
-                    <p className="text-[#8A9BB5] text-xs sm:text-sm">Search across multiple airlines with real-time pricing.</p>
+            <div 
+                className="w-full pt-12 pb-36 px-4 sm:px-6 relative overflow-hidden"
+                style={{ 
+                    backgroundImage: `url(${heroBg})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundColor: '#1D4171'
+                }}
+            >
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <h1 className="text-white text-3xl sm:text-[38px] font-black mb-2 tracking-tight animate-fade-in">Book Flights</h1>
+                    <p className="text-white/80 text-xs sm:text-sm font-medium animate-fade-in">Search across multiple airlines with real-time pricing.</p>
                 </div>
             </div>
 
             {/* ── SEARCH CARD ──────────────────────────────────────────────── */}
-            <div className="max-w-7xl mx-auto px-4 -mt-24 sm:-mt-20 relative z-20">
-                <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 mb-6 border border-[#E8E8E8]">
+            <div className="max-w-7xl mx-auto px-4 -mt-28 sm:-mt-24 relative z-20">
+                <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(10,100,219,0.08)] p-5 sm:p-8 mb-6 border border-slate-100">
 
-                    <div className="flex items-center gap-6 mb-5 pb-4 border-b border-[#F0F0F0]">
-                        {[{val:'oneWay',label:'One Way'},{val:'roundTrip',label:'Round Trip'},{val:'multiCity',label:'Multi City'}].map(t => (
-                            <label key={t.val} className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="trip" className="w-4 h-4" style={{accentColor:'#FF8000'}}
-                                    checked={tripType === t.val} onChange={() => setTripType(t.val)} />
-                                <span className={`text-sm font-semibold ${tripType === t.val ? 'text-[#222]' : 'text-[#888]'}`}>{t.label}</span>
-                            </label>
-                        ))}
+                    {/* Tab Selection */}
+                    <div className="relative border-b border-slate-100 mb-6">
+                        <div className="flex items-center w-full pb-3">
+                            {/* One Way Tab */}
+                            <button
+                                type="button"
+                                onClick={() => setTripType('oneWay')}
+                                className={`flex-1 flex items-center justify-center gap-3 py-1.5 transition-all relative ${tripType === 'oneWay' ? 'text-slate-900 font-extrabold' : 'text-slate-400 font-bold hover:text-slate-600'}`}
+                            >
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${tripType === 'oneWay' ? 'bg-[#ff6c00] text-white shadow-sm' : 'bg-blue-50/50 text-blue-500'}`}>
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="7" y1="17" x2="17" y2="7"></line>
+                                        <polyline points="7 7 17 7 17 17"></polyline>
+                                    </svg>
+                                </span>
+                                <span className="text-xs sm:text-sm uppercase tracking-wider">One Way</span>
+                                {tripType === 'oneWay' && (
+                                    <div className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff8000] to-[#ff5100] rounded-full" />
+                                )}
+                            </button>
+                            
+                            <div className="w-[1px] h-6 bg-slate-200" />
+                            
+                            {/* Round Trip Tab */}
+                            <button
+                                type="button"
+                                onClick={() => setTripType('roundTrip')}
+                                className={`flex-1 flex items-center justify-center gap-3 py-1.5 transition-all relative ${tripType === 'roundTrip' ? 'text-slate-900 font-extrabold' : 'text-slate-400 font-bold hover:text-slate-600'}`}
+                            >
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${tripType === 'roundTrip' ? 'bg-[#ff6c00] text-white shadow-sm' : 'bg-blue-50/50 text-blue-500'}`}>
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17 2.5l4 4-4 4M7 21.5l-4-4 4-4"/>
+                                        <path d="M3 17.5h18M21 6.5H3"/>
+                                    </svg>
+                                </span>
+                                <span className="text-xs sm:text-sm uppercase tracking-wider">Round Trip</span>
+                                {tripType === 'roundTrip' && (
+                                    <div className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff8000] to-[#ff5100] rounded-full" />
+                                )}
+                            </button>
+                            
+                            <div className="w-[1px] h-6 bg-slate-200" />
+                            
+                            {/* Multi City Tab */}
+                            <button
+                                type="button"
+                                onClick={() => setTripType('multiCity')}
+                                className={`flex-1 flex items-center justify-center gap-3 py-1.5 transition-all relative ${tripType === 'multiCity' ? 'text-slate-900 font-extrabold' : 'text-slate-400 font-bold hover:text-slate-600'}`}
+                            >
+                                <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${tripType === 'multiCity' ? 'bg-[#ff6c00] text-white shadow-sm' : 'bg-blue-50/50 text-blue-500'}`}>
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 9 6 9 12 15 12 15 18 21 18"></polyline>
+                                        <circle cx="3" cy="6" r="1"></circle>
+                                        <circle cx="21" cy="18" r="1"></circle>
+                                    </svg>
+                                </span>
+                                <span className="text-xs sm:text-sm uppercase tracking-wider">Multi City</span>
+                                {tripType === 'multiCity' && (
+                                    <div className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff8000] to-[#ff5100] rounded-full" />
+                                )}
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col xl:flex-row items-stretch border border-[#D0D0D0] rounded-md overflow-visible">
-                        <div className="flex-1 px-4 py-3 border-b xl:border-b-0 xl:border-r border-[#D0D0D0] relative">
-                            <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest mb-1 block">FROM</span>
-                            <AirportAutocomplete label="" codeValue={from} onChangeCode={setFrom} />
+                    {/* MOBILE INPUTS STACK CONTAINER */}
+                    <div className="md:hidden border border-slate-200/80 rounded-3xl bg-white shadow-[0_4px_25px_rgba(0,0,0,0.02)] mb-5">
+                        {/* Row 1: FROM */}
+                        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100 relative rounded-t-[22px]">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25C4.5 6.63 7.63 3.5 11.5 3.5s7 3.13 7 7z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">FROM</span>
+                                <AirportAutocomplete label="" codeValue={from} onChangeCode={setFrom} />
+                            </div>
+                            {/* Swap Button inside FROM */}
+                            <button 
+                                type="button" 
+                                onClick={() => { const t = from; setFrom(to); setTo(t); }}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-blue-50 text-blue-600 shadow-sm flex items-center justify-center text-sm font-bold border border-white hover:bg-blue-100 active:scale-90 transition-all duration-200"
+                            >
+                                ⇅
+                            </button>
                         </div>
-                        <div className="hidden xl:flex items-center justify-center w-10 shrink-0 cursor-pointer hover:bg-[#FFF4EC] border-r border-[#D0D0D0]"
-                            onClick={() => { const t = from; setFrom(to); setTo(t); }}>
-                            <span className="text-[#FF8000] text-lg font-bold">⇄</span>
+
+                        {/* Row 2: TO */}
+                        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25C4.5 6.63 7.63 3.5 11.5 3.5s7 3.13 7 7z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">TO</span>
+                                <AirportAutocomplete label="" codeValue={to} onChangeCode={setTo} />
+                            </div>
                         </div>
-                        <div className="flex-1 px-4 py-3 border-b xl:border-b-0 xl:border-r border-[#D0D0D0] relative">
-                            <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest mb-1 block">TO</span>
-                            <AirportAutocomplete label="" codeValue={to} onChangeCode={setTo} />
+
+                        {/* Row 3: DEPART */}
+                        <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100 relative">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0 relative">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">DEPART</span>
+                                <div className="relative mt-0.5">
+                                    <span className="text-[15px] font-bold text-slate-800 block pointer-events-none">
+                                        {formatDisplayDate(date)}
+                                    </span>
+                                    <input 
+                                        type="date" 
+                                        value={date} 
+                                        min={today} 
+                                        onChange={e => setDate(e.target.value)}
+                                        onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-slate-400 pointer-events-none">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </div>
                         </div>
-                        <div className="flex-1 px-4 py-3 border-b xl:border-b-0 xl:border-r border-[#D0D0D0]">
-                            <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest mb-1 block">DEPART</span>
-                            <input type="date" value={date} min={today} onChange={e => setDate(e.target.value)}
-                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                                className="text-[15px] font-bold text-[#222] outline-none bg-transparent w-full cursor-pointer" />
-                        </div>
+
+                        {/* Row 4 (if roundTrip): RETURN */}
                         {tripType === 'roundTrip' && (
-                            <div className="flex-1 px-4 py-3 border-b xl:border-b-0 xl:border-r border-[#D0D0D0] bg-[#FFFAF5]">
-                                <span className="text-[10px] font-bold uppercase tracking-widest mb-1 text-[#FF8000] block">RETURN</span>
-                                <input type="date" value={returnDate} min={date} onChange={e => setReturnDate(e.target.value)}
-                                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                                    className="text-[15px] font-bold text-[#222] outline-none bg-transparent w-full cursor-pointer" />
+                            <div className="flex items-center gap-4 px-5 py-4 border-b border-slate-100 relative">
+                                <div className="text-blue-500 shrink-0">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                </div>
+                                <div className="flex-1 min-w-0 relative">
+                                    <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest block">RETURN</span>
+                                    <div className="relative mt-0.5">
+                                        <span className="text-[15px] font-bold text-slate-800 block pointer-events-none">
+                                            {formatDisplayDate(returnDate)}
+                                        </span>
+                                        <input 
+                                            type="date" 
+                                            value={returnDate} 
+                                            min={date} 
+                                            onChange={e => setReturnDate(e.target.value)}
+                                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-slate-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
                             </div>
                         )}
-                        <div className="flex-1 px-4 py-3 cursor-pointer hover:bg-[#FFFAF5] pax-container border-b xl:border-b-0 xl:border-r border-[#D0D0D0] relative"
-                            onClick={() => setPaxOpen(!paxOpen)}>
-                            <span className="text-[10px] font-bold text-[#999] uppercase tracking-widest mb-1 block">TRAVELLERS &amp; CLASS</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[15px] font-bold text-[#222]">{passengers} Pax</span>
-                                <span className="text-[12px] font-black uppercase text-[#FF8000]">{cabinClass}</span>
+
+                        {/* Row 5: TRAVELLERS & CLASS */}
+                        <div 
+                            onClick={() => setPaxOpen(!paxOpen)}
+                            className="flex items-center gap-4 px-5 py-4 relative cursor-pointer pax-container rounded-b-[22px]"
+                        >
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5A8.25 8.25 0 0112 11.25a8.25 8.25 0 017.5 8.25v1.5H4.5v-1.5z" />
+                                </svg>
                             </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">TRAVELLERS & CLASS</span>
+                                <div className="flex items-center gap-3 mt-0.5">
+                                    <span className="text-[15px] font-bold text-slate-800">{passengers} Pax</span>
+                                    <span className="text-[11px] font-black uppercase text-[#ff6c00] tracking-wider">{cabinClass.toUpperCase()}</span>
+                                </div>
+                            </div>
+                            <div className="text-slate-400 shrink-0">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </div>
+
+                            {/* Dropdown overlay for Pax */}
                             {paxOpen && (
-                                <div className="absolute top-[72px] left-0 md:right-0 md:left-auto bg-white rounded-xl shadow-2xl z-[100] flex flex-col md:flex-row overflow-hidden border border-[#E0E0E0] animate-scale-in w-[calc(100vw-32px)] sm:w-[480px]"
-                                    onClick={e => e.stopPropagation()}>
-                                    <div className="flex-1 p-6 space-y-6">
+                                <div 
+                                    className="absolute top-[76px] left-0 bg-white rounded-3xl shadow-2xl z-[100] flex flex-col overflow-hidden border border-slate-100 w-full animate-scale-in max-h-[450px] overflow-y-auto"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className="p-5 space-y-5 bg-white">
                                         {[
                                             { id: 'adt', label: 'Adults', sub: '12+ yrs', min: 1, max: 9 },
                                             { id: 'chd', label: 'Children', sub: '2-12 yrs', min: 0, max: 8 },
                                             { id: 'inf', label: 'Infants', sub: '0-2 yrs', min: 0, max: 8 }
                                         ].map(type => (
                                             <div key={type.id}>
-                                                <p className="text-xs font-black text-[#444] mb-3 uppercase tracking-tighter">{type.label} <span className="text-[10px] text-[#999] font-normal lowercase">({type.sub})</span></p>
+                                                <p className="text-xs font-black text-blue-950 mb-2 uppercase tracking-tighter">{type.label} <span className="text-[10px] text-slate-400 font-normal lowercase">({type.sub})</span></p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {Array.from({ length: type.max - type.min + 1 }, (_, i) => i + type.min).map(n => (
-                                                        <button key={n} onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
-                                                            className="w-9 h-9 rounded-lg text-xs font-black transition-all"
-                                                            style={{ background: pax[type.id] === n ? '#FF8000' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}>
+                                                        <button 
+                                                            type="button"
+                                                            key={n} 
+                                                            onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
+                                                            className="w-8 h-8 rounded-lg text-xs font-black transition-all"
+                                                            style={{ background: pax[type.id] === n ? '#ff6c00' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}
+                                                        >
                                                             {n}
                                                         </button>
                                                     ))}
@@ -403,30 +600,369 @@ const FlightSearch = () => {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="p-6 border-t md:border-t-0 md:border-l border-[#EEE] bg-[#FAFAFA] w-full sm:w-[180px]">
-                                        <p className="text-[10px] font-black text-[#999] uppercase tracking-widest mb-4">Class</p>
-                                        <div className="space-y-4">
+                                    <div className="p-5 border-t border-slate-50 bg-slate-50/40">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Class</p>
+                                        <div className="grid grid-cols-2 gap-2 mb-4">
                                             {['Economy', 'Premium Economy', 'Business', 'First'].map(c => (
-                                                <label key={c} className="flex items-center justify-between cursor-pointer gap-2">
-                                                    <span className="text-xs font-bold" style={{ color: cabinClass === c ? '#FF8000' : '#555' }}>{c}</span>
-                                                    <input type="radio" className="w-4 h-4" style={{ accentColor: '#FF8000' }}
-                                                        checked={cabinClass === c} onChange={() => setCabinClass(c)} />
+                                                <label key={c} className="flex items-center justify-between cursor-pointer gap-2 bg-white px-3 py-2 rounded-xl border border-slate-150 shadow-sm">
+                                                    <span className="text-[10px] font-bold text-slate-700">{c}</span>
+                                                    <input 
+                                                        type="radio" 
+                                                        className="w-3.5 h-3.5 accent-[#ff6c00]"
+                                                        checked={cabinClass === c} 
+                                                        onChange={() => setCabinClass(c)} 
+                                                    />
                                                 </label>
                                             ))}
                                         </div>
-                                        <button onClick={() => setPaxOpen(false)}
-                                            className="w-full mt-8 bg-[#FF8000] text-white font-black py-3 rounded-lg uppercase text-[10px] tracking-[0.15em] shadow-lg shadow-orange-500/20">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setPaxOpen(false)}
+                                            className="w-full bg-[#ff6c00] hover:bg-orange-600 text-white font-black py-3 rounded-xl uppercase text-xs tracking-wider shadow-lg shadow-orange-500/20"
+                                        >
                                             Done
                                         </button>
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <button onClick={handleSearch}
-                            className="bg-[#FF8000] text-white font-black text-sm uppercase tracking-widest px-10 py-5 xl:py-0 transition-all active:scale-95 whitespace-nowrap rounded-b xl:rounded-b-none xl:rounded-r shadow-xl shadow-orange-500/10">
-                            {loading ? 'Searching...' : 'Search Flights'}
+                    </div>
+
+                    {/* DESKTOP & TABLET INPUTS GRID */}
+                    <div className="hidden md:grid md:grid-cols-2 xl:grid-cols-4 gap-4 xl:gap-5 mb-6">
+                        {/* FROM */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25C4.5 6.63 7.63 3.5 11.5 3.5s7 3.13 7 7z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">FROM</span>
+                                <AirportAutocomplete label="" codeValue={from} onChangeCode={setFrom} />
+                            </div>
+                            {/* Desktop Swap Button */}
+                            <button 
+                                type="button" 
+                                onClick={() => { const t = from; setFrom(to); setTo(t); }}
+                                className="absolute -right-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-blue-50 text-blue-600 shadow-md flex items-center justify-center text-sm font-bold border border-white hover:bg-blue-100 hover:rotate-180 transition-all duration-350 active:scale-95"
+                            >
+                                ⇅
+                            </button>
+                        </div>
+
+                        {/* TO */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25C4.5 6.63 7.63 3.5 11.5 3.5s7 3.13 7 7z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">TO</span>
+                                <AirportAutocomplete label="" codeValue={to} onChangeCode={setTo} />
+                            </div>
+                        </div>
+
+                        {/* DEPART */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0">
+                            <div className="text-blue-500 shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </div>
+                            <div className="flex-1 min-w-0 relative">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">DEPART</span>
+                                <div className="relative mt-0.5">
+                                    <span className="text-sm font-bold text-slate-800 block pointer-events-none">
+                                        {formatDisplayDate(date)}
+                                    </span>
+                                    <input 
+                                        type="date" 
+                                        value={date} 
+                                        min={today} 
+                                        onChange={e => setDate(e.target.value)}
+                                        onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-slate-400 pointer-events-none">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* RETURN / TRAVELLERS (depending on tripType) */}
+                        {tripType === 'roundTrip' ? (
+                            <>
+                                <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0">
+                                    <div className="text-blue-500 shrink-0">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0 relative">
+                                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest block mb-0.5">RETURN</span>
+                                        <div className="relative mt-0.5">
+                                            <span className="text-sm font-bold text-slate-800 block pointer-events-none">
+                                                {formatDisplayDate(returnDate)}
+                                            </span>
+                                            <input 
+                                                type="date" 
+                                                value={returnDate} 
+                                                min={date} 
+                                                onChange={e => setReturnDate(e.target.value)}
+                                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="text-slate-400 pointer-events-none">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                            <polyline points="6 9 12 15 18 9"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                {/* Full Width Row for Travellers in Round Trip */}
+                                <div 
+                                    className="col-span-full bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0 cursor-pointer pax-container"
+                                    onClick={() => setPaxOpen(!paxOpen)}
+                                >
+                                    <div className="text-blue-500 shrink-0">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5A8.25 8.25 0 0112 11.25a8.25 8.25 0 017.5 8.25v1.5H4.5v-1.5z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">TRAVELLERS & CLASS</span>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-sm font-bold text-slate-800">{passengers} Pax</span>
+                                            <span className="text-[10px] font-black uppercase text-[#ff6c00] bg-orange-50 px-2 py-0.5 rounded-full">{cabinClass}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-slate-400 shrink-0">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                            <polyline points="6 9 12 15 18 9"/>
+                                        </svg>
+                                    </div>
+
+                                    {paxOpen && (
+                                        <div 
+                                            className="absolute top-[76px] right-0 bg-white rounded-3xl shadow-2xl z-[100] flex overflow-hidden border border-slate-100 animate-scale-in w-[480px]"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            <div className="flex-1 p-6 space-y-6 bg-white">
+                                                {[
+                                                    { id: 'adt', label: 'Adults', sub: '12+ yrs', min: 1, max: 9 },
+                                                    { id: 'chd', label: 'Children', sub: '2-12 yrs', min: 0, max: 8 },
+                                                    { id: 'inf', label: 'Infants', sub: '0-2 yrs', min: 0, max: 8 }
+                                                ].map(type => (
+                                                    <div key={type.id}>
+                                                        <p className="text-xs font-black text-blue-950 mb-3 uppercase tracking-tighter">{type.label} <span className="text-[10px] text-slate-400 font-normal lowercase">({type.sub})</span></p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {Array.from({ length: type.max - type.min + 1 }, (_, i) => i + type.min).map(n => (
+                                                                <button 
+                                                                    type="button"
+                                                                    key={n} 
+                                                                    onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
+                                                                    className="w-9 h-9 rounded-lg text-xs font-black transition-all"
+                                                                    style={{ background: pax[type.id] === n ? '#ff6c00' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}
+                                                                >
+                                                                    {n}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="p-6 border-l border-slate-50 bg-slate-50/40 w-[180px]">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Class</p>
+                                                <div className="space-y-4">
+                                                    {['Economy', 'Premium Economy', 'Business', 'First'].map(c => (
+                                                        <label key={c} className="flex items-center justify-between cursor-pointer gap-2">
+                                                            <span className="text-xs font-bold" style={{ color: cabinClass === c ? '#ff6c00' : '#555' }}>{c}</span>
+                                                            <input 
+                                                                type="radio" 
+                                                                className="w-4 h-4 accent-[#ff6c00]" 
+                                                                checked={cabinClass === c} 
+                                                                onChange={() => setCabinClass(c)} 
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setPaxOpen(false)}
+                                                    className="w-full mt-8 bg-[#ff6c00] hover:bg-orange-600 text-white font-black py-3 rounded-xl uppercase text-[10px] tracking-[0.15em] shadow-lg shadow-orange-500/20"
+                                                >
+                                                    Done
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            /* TRAVELLERS & CLASS (Default One Way / Multi City Column) */
+                            <div 
+                                className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center gap-3.5 shadow-sm transition-all focus-within:border-blue-300 focus-within:shadow-md relative min-w-0 cursor-pointer pax-container"
+                                onClick={() => setPaxOpen(!paxOpen)}
+                            >
+                                <div className="text-blue-500 shrink-0">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5A8.25 8.25 0 0112 11.25a8.25 8.25 0 017.5 8.25v1.5H4.5v-1.5z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">TRAVELLERS & CLASS</span>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-sm font-bold text-slate-800">{passengers} Pax</span>
+                                        <span className="text-[10px] font-black uppercase text-[#ff6c00] bg-orange-50 px-2 py-0.5 rounded-full">{cabinClass}</span>
+                                    </div>
+                                </div>
+                                <div className="text-slate-400 shrink-0">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+
+                                {paxOpen && (
+                                    <div 
+                                        className="absolute top-[76px] right-0 bg-white rounded-3xl shadow-2xl z-[100] flex overflow-hidden border border-slate-100 animate-scale-in w-[480px]"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="flex-1 p-6 space-y-6 bg-white">
+                                            {[
+                                                { id: 'adt', label: 'Adults', sub: '12+ yrs', min: 1, max: 9 },
+                                                { id: 'chd', label: 'Children', sub: '2-12 yrs', min: 0, max: 8 },
+                                                { id: 'inf', label: 'Infants', sub: '0-2 yrs', min: 0, max: 8 }
+                                            ].map(type => (
+                                                <div key={type.id}>
+                                                    <p className="text-xs font-black text-blue-950 mb-3 uppercase tracking-tighter">{type.label} <span className="text-[10px] text-slate-400 font-normal lowercase">({type.sub})</span></p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {Array.from({ length: type.max - type.min + 1 }, (_, i) => i + type.min).map(n => (
+                                                            <button 
+                                                                type="button"
+                                                                key={n} 
+                                                                onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
+                                                                className="w-9 h-9 rounded-lg text-xs font-black transition-all"
+                                                                style={{ background: pax[type.id] === n ? '#ff6c00' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}
+                                                            >
+                                                                {n}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="p-6 border-l border-slate-50 bg-slate-50/40 w-[180px]">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Class</p>
+                                            <div className="space-y-4">
+                                                {['Economy', 'Premium Economy', 'Business', 'First'].map(c => (
+                                                    <label key={c} className="flex items-center justify-between cursor-pointer gap-2">
+                                                        <span className="text-xs font-bold" style={{ color: cabinClass === c ? '#ff6c00' : '#555' }}>{c}</span>
+                                                        <input 
+                                                            type="radio" 
+                                                            className="w-4 h-4 accent-[#ff6c00]" 
+                                                            checked={cabinClass === c} 
+                                                            onChange={() => setCabinClass(c)} 
+                                                        />
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setPaxOpen(false)}
+                                                className="w-full mt-8 bg-[#ff6c00] hover:bg-orange-600 text-white font-black py-3 rounded-xl uppercase text-[10px] tracking-[0.15em] shadow-lg shadow-orange-500/20"
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* SEARCH FLIGHTS BUTTON (Centered & Responsive) */}
+                    <div className="flex justify-center mt-6">
+                        <button 
+                            onClick={handleSearch}
+                            className="w-full md:w-auto md:min-w-[340px] h-14 bg-gradient-to-r from-[#ff7a00] to-[#ff5100] hover:shadow-xl hover:shadow-orange-500/10 text-white font-black rounded-full transition-all transform active:scale-98 text-xs sm:text-sm tracking-widest uppercase flex items-center justify-between px-6 shadow-lg group relative overflow-hidden"
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs shrink-0 font-bold">
+                                    <svg className="w-4 h-4 transform -rotate-45" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                    </svg>
+                                </span>
+                                <span>{loading ? 'Searching...' : 'Search Flights'}</span>
+                            </div>
+                            <span className="text-lg group-hover:translate-x-1.5 transition-transform duration-200">➔</span>
                         </button>
                     </div>
+
+                </div>
+
+                {/* Features Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 max-w-4xl mx-auto">
+                    <div className="flex items-center gap-3 bg-white border border-slate-100 p-3.5 rounded-2xl shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50/70 flex items-center justify-center text-[#095ec8] shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider">Best Price</h4>
+                            <p className="text-[9px] font-bold text-slate-400">Guarantee</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white border border-slate-100 p-3.5 rounded-2xl shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50/70 flex items-center justify-center text-[#095ec8] shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V6a3 3 0 016 0v6.75a3 3 0 01-3 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider">24/7 Support</h4>
+                            <p className="text-[9px] font-bold text-slate-400">We are here</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white border border-slate-100 p-3.5 rounded-2xl shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50/70 flex items-center justify-center text-[#095ec8] shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider">Secure Booking</h4>
+                            <p className="text-[9px] font-bold text-slate-400">Your data is safe</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Floating Action Button */}
+                <div className="fixed bottom-6 right-6 z-[99]">
+                    <button className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#095ec8] to-[#8b5cf6] hover:scale-105 active:scale-95 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center transition-all duration-200">
+                        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" />
+                        </svg>
+                    </button>
                 </div>
 
                 {loading && <InspirationLoader />}
@@ -652,14 +1188,68 @@ const FlightSearch = () => {
                                                     <p className="text-[9px] font-black text-[#FF8000] uppercase tracking-widest">Pricing Details</p>
                                                     <p className="text-[9px] font-bold text-[#FF8000] animate-pulse">Swipe left to Book ›</p>
                                                 </div>
-                                                <div className="overflow-x-auto">
+                                                {/* Mobile Pricing Details Cards */}
+                                                <div className="lg:hidden flex flex-col divide-y divide-[#E0E0E0] bg-[#FAFAFA]">
                                                     {loadingFares===flight.id ? <div className="p-10 text-center text-[#888] text-sm italic">Loading fare options...</div> : (
-                                                        <table className="w-full min-w-[800px]">
-                                                        <thead className="bg-[#F8F8F8] border-b border-[#E0E0E0] sticky top-0 z-10">
+                                                        (fareDetails[flight.id]||[flight]).map((fare, fi)=>{
+                                                            const fn = Number(fare.Fare?.total?.netfare||fare.price||0);
+                                                            const fp = showNetPrice ? (fn + Number(markupAmount)) : fn;
+                                                            const ft = fare.Fare?.fareTypeInd || (fare.fareType?.toLowerCase().includes('sme')?'SME':'Retail');
+                                                            const rtc = fare.refType || fare.Fare?.refundType || 'N';
+                                                            const rtcText = rtc==='R'?'Refundable':rtc==='P'?'Partial Refund':'Non-Refundable';
+                                                            const rtcBg = rtc==='R'?'#d4edda':rtc==='P'?'#fff3cd':'#f8d7da';
+                                                            const rtcColor = rtc==='R'?'#1e7e34':rtc==='P'?'#856404':'#721c24';
+                                                            
+                                                            return (
+                                                                <div key={fi} className="p-5 flex flex-col gap-4 hover:bg-orange-50/50 transition-colors">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div className="flex flex-col gap-2">
+                                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                                <span className="px-2.5 py-1 rounded-md text-[9px] font-black text-white bg-slate-600 uppercase tracking-widest">{ft}</span>
+                                                                                <span className="px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest" style={{background:rtcBg, color:rtcColor}}>{rtcText}</span>
+                                                                            </div>
+                                                                            <p className="text-xs font-bold text-[#444]">{cabinClass}</p>
+                                                                        </div>
+                                                                        <div className="text-right shrink-0 ml-4">
+                                                                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-wider mb-0.5">Total</p>
+                                                                            <p className="text-xl font-black text-[#222]">₹{fp.toLocaleString()}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex justify-between items-center bg-white p-3.5 rounded-xl border border-[#E8E8E8] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                                                                        <div className="flex gap-5">
+                                                                            <div>
+                                                                                <p className="text-[9px] text-[#888] uppercase font-black tracking-widest mb-1">Baggage</p>
+                                                                                <p className="text-[11px] font-bold text-[#333] flex items-center gap-1"><span>🧳</span> {fare.baggage?.checkin || '15 KG'}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[9px] text-[#888] uppercase font-black tracking-widest mb-1">Extras</p>
+                                                                                <p className="text-[10px] font-bold text-[#555]">🍴 Paid • 💺 Paid</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button onClick={()=>handleViewFareRules(fare.flightID||flight.id, flight.flightNumber, rtc, from, to)} disabled={fetchingRules} className="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase text-right tracking-wider">
+                                                                            {fetchingRules ? 'Loading...' : 'Rules ›'}
+                                                                        </button>
+                                                                    </div>
+                                                                    
+                                                                    <button onClick={()=>handleBook(flight, fare)} className="w-full py-3.5 mt-1 bg-gradient-to-r from-[#ff7a00] to-[#ff5100] hover:from-[#e66a00] hover:to-[#e64900] text-white rounded-xl font-black text-[12px] uppercase tracking-[0.15em] shadow-[0_8px_16px_rgba(255,108,0,0.2)] active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                                                                        Book Now <span className="text-lg leading-none">›</span>
+                                                                    </button>
+                                                                </div>
+                                                            )
+                                                        })
+                                                    )}
+                                                </div>
+
+                                                {/* Desktop Pricing Details Table */}
+                                                <div className="hidden lg:block overflow-x-auto w-full max-w-full pb-2">
+                                                    {loadingFares===flight.id ? <div className="p-10 text-center text-[#888] text-sm italic">Loading fare options...</div> : (
+                                                        <table className="w-full min-w-[800px] border-separate" style={{ borderSpacing: 0 }}>
+                                                        <thead className="bg-[#F8F8F8] sticky top-0 z-20">
                                                             <tr>
-                                                                {['Fare Type','Status','Rules','Baggage','Meal/Seat'].map(h=><th key={h} className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-left">{h}</th>)}
-                                                                <th className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-right sticky right-[84px] bg-[#F8F8F8] shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)]">Price</th>
-                                                                <th className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-center sticky right-0 bg-[#F8F8F8]">Book</th>
+                                                                {['Fare Type','Status','Rules','Baggage','Meal/Seat'].map(h=><th key={h} className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-left border-b border-[#E0E0E0]">{h}</th>)}
+                                                                <th className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-right sticky right-[84px] bg-[#F8F8F8] shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)] border-b border-[#E0E0E0] z-30">Price</th>
+                                                                <th className="px-4 py-3 text-[10px] font-bold text-[#666] uppercase text-center sticky right-0 bg-[#F8F8F8] border-b border-[#E0E0E0] z-30">Book</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-[#F0F0F0]">
@@ -670,13 +1260,13 @@ const FlightSearch = () => {
                                                                 const rtc = fare.refType || fare.Fare?.refundType || 'N';
                                                                 return (
                                                                     <tr key={fi} className="hover:bg-orange-50/30 group">
-                                                                        <td className="px-4 py-4"><span className="px-2 py-0.5 rounded-sm text-[9px] font-bold text-white bg-slate-500 uppercase">{ft}</span><p className="text-[11px] text-[#888] mt-1">{cabinClass}</p></td>
-                                                                        <td className="px-4 py-4"><span className="px-2 py-1 rounded text-[9px] font-black uppercase" style={{background:rtc==='R'?'#d4edda':rtc==='P'?'#fff3cd':'#f8d7da', color:rtc==='R'?'#1e7e34':rtc==='P'?'#856404':'#721c24'}}>{rtc==='R'?'Refundable':rtc==='P'?'Partial Refund':'Non-Refundable'}</span></td>
-                                                                        <td className="px-4 py-4"><button onClick={()=>handleViewFareRules(fare.flightID||flight.id, flight.flightNumber, rtc, from, to)} disabled={fetchingRules} className="text-[10px] font-black text-blue-500 hover:underline uppercase flex items-center gap-1">{fetchingRules ? <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/> : 'Fare Rules ›'}</button></td>
-                                                                        <td className="px-4 py-4 text-[11px] text-[#555] font-bold">{fare.baggage?.checkin || '15 KG'}</td>
-                                                                        <td className="px-4 py-4"><p className="text-[10px] text-[#888]">🍴 Paid Meal</p><p className="text-[10px] text-[#888]">💺 Paid Seat</p></td>
-                                                                        <td className="px-4 py-4 text-[16px] font-black text-[#222] text-right sticky right-[84px] bg-white group-hover:bg-[#FFFBF5] shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)]">₹{fp.toLocaleString()}</td>
-                                                                        <td className="px-4 py-4 text-center sticky right-0 bg-white group-hover:bg-[#FFFBF5]"><button onClick={()=>handleBook(flight, fare)} className="bg-[#FF8000] text-white px-4 py-2 rounded font-black text-[10px] uppercase shadow-md shadow-orange-500/20 active:scale-95 transition-all">Book</button></td>
+                                                                        <td className="px-4 py-4 border-b border-[#F0F0F0]"><span className="px-2 py-0.5 rounded-sm text-[9px] font-bold text-white bg-slate-500 uppercase">{ft}</span><p className="text-[11px] text-[#888] mt-1">{cabinClass}</p></td>
+                                                                        <td className="px-4 py-4 border-b border-[#F0F0F0]"><span className="px-2 py-1 rounded text-[9px] font-black uppercase" style={{background:rtc==='R'?'#d4edda':rtc==='P'?'#fff3cd':'#f8d7da', color:rtc==='R'?'#1e7e34':rtc==='P'?'#856404':'#721c24'}}>{rtc==='R'?'Refundable':rtc==='P'?'Partial Refund':'Non-Refundable'}</span></td>
+                                                                        <td className="px-4 py-4 border-b border-[#F0F0F0]"><button onClick={()=>handleViewFareRules(fare.flightID||flight.id, flight.flightNumber, rtc, from, to)} disabled={fetchingRules} className="text-[10px] font-black text-blue-500 hover:underline uppercase flex items-center gap-1">{fetchingRules ? <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/> : 'Fare Rules ›'}</button></td>
+                                                                        <td className="px-4 py-4 text-[11px] text-[#555] font-bold border-b border-[#F0F0F0]">{fare.baggage?.checkin || '15 KG'}</td>
+                                                                        <td className="px-4 py-4 border-b border-[#F0F0F0]"><p className="text-[10px] text-[#888]">🍴 Paid Meal</p><p className="text-[10px] text-[#888]">💺 Paid Seat</p></td>
+                                                                        <td className="px-4 py-4 text-[16px] font-black text-[#222] text-right sticky right-[84px] bg-white group-hover:bg-[#FFFBF5] shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)] border-b border-[#F0F0F0] z-20">₹{fp.toLocaleString()}</td>
+                                                                        <td className="px-4 py-4 text-center sticky right-0 bg-white group-hover:bg-[#FFFBF5] border-b border-[#F0F0F0] z-20"><button onClick={()=>handleBook(flight, fare)} className="bg-[#FF8000] text-white px-4 py-2 rounded font-black text-[10px] uppercase shadow-md shadow-orange-500/20 active:scale-95 transition-all">Book</button></td>
                                                                     </tr>
                                                                 );
                                                             })}

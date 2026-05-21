@@ -125,16 +125,22 @@ const flattenFtdFlights = (ftdFlights) => {
  * Applies Admin Markup rules to a list of flights.
  * Rules are prioritized: Specific Airline > ALL Airlines.
  */
-const applyAdminMarkup = async (flights, serviceType = 'DOMESTIC_FLIGHT') => {
+const applyAdminMarkup = async (flights, serviceType = 'DOMESTIC_FLIGHT', agentCode = 'ALL') => {
     try {
         const rules = await MarkupRule.find({ serviceType, isActive: true }).sort({ priority: -1, createdAt: -1 });
         if (!rules || rules.length === 0) return flights;
 
         return flights.map(f => {
             // Find the best matching rule using a specificity scoring system:
+            // Specific Agent match = 1000 points
             // Specific Airline match = 100 points
             // Specific Refund Type match = 10 points
             const scoredRules = rules.map(r => {
+                // If the rule is specifically for an agent, and this is NOT that agent, discard it
+                if (r.targetAgentCode && r.targetAgentCode !== 'ALL' && r.targetAgentCode !== agentCode) {
+                    return null;
+                }
+
                 const isAirlineMatch = r.airline === 'ALL' || r.airline === f.airlineIata;
                 const isRefundMatch = r.refundType === 'All' || 
                                      r.refundType === f.refundType || 
@@ -142,6 +148,7 @@ const applyAdminMarkup = async (flights, serviceType = 'DOMESTIC_FLIGHT') => {
                 
                 if (isAirlineMatch && isRefundMatch) {
                     let score = 0;
+                    if (r.targetAgentCode && r.targetAgentCode !== 'ALL') score += 1000;
                     if (r.airline !== 'ALL') score += 100;
                     if (r.refundType !== 'All') score += 10;
                     return { rule: r, score };
@@ -212,10 +219,16 @@ const searchFlights = async (req, res) => {
 
         const result = await ftdFlightService.searchFlights(value);
 
+        let agentCode = 'ALL';
+        if (req.user && req.user._id) {
+            const agent = await Agent.findById(req.user._id);
+            if (agent && agent.agentCode) agentCode = agent.agentCode;
+        }
+
         // Apply Dynamic Admin Markups
         if (result && result.flights) {
             const serviceTypeCode = value.serType === 2 ? 'INTERNATIONAL_FLIGHT' : 'DOMESTIC_FLIGHT';
-            result.flights = await applyAdminMarkup(result.flights, serviceTypeCode);
+            result.flights = await applyAdminMarkup(result.flights, serviceTypeCode, agentCode);
         }
 
         return res.status(200).json({
@@ -260,7 +273,13 @@ const getFareDetails = async (req, res) => {
                 }
             }
             
-            const flights = await applyAdminMarkup(result, serType); 
+            let agentCode = 'ALL';
+            if (req.user && req.user._id) {
+                const agent = await Agent.findById(req.user._id);
+                if (agent && agent.agentCode) agentCode = agent.agentCode;
+            }
+            
+            const flights = await applyAdminMarkup(result, serType, agentCode); 
             res.status(200).json({ success: true, data: flights });
         } else {
             res.status(200).json({ success: true, data: result });
@@ -318,8 +337,14 @@ const verifyPriceController = async (req, res) => {
                 }
             }
             
+            let agentCode = 'ALL';
+            if (req.user && req.user._id) {
+                const agent = await Agent.findById(req.user._id);
+                if (agent && agent.agentCode) agentCode = agent.agentCode;
+            }
+            
             // applyAdminMarkup expects an array
-            const markedResults = await applyAdminMarkup([result], serType);
+            const markedResults = await applyAdminMarkup([result], serType, agentCode);
             res.status(200).json({ success: true, data: markedResults[0] });
         } else {
             res.status(200).json({ success: true, data: result });
@@ -508,11 +533,18 @@ const bookFlightController = async (req, res) => {
         
         // Recalculate Admin Markup (Backend authority)
         const serType = isIntl ? 'INTERNATIONAL_FLIGHT' : 'DOMESTIC_FLIGHT';
+        
+        let agentCode = 'ALL';
+        if (req.user && req.user._id) {
+            const agentForMarkup = await Agent.findById(req.user._id);
+            if (agentForMarkup && agentForMarkup.agentCode) agentCode = agentForMarkup.agentCode;
+        }
+
         const dummyFlight = { 
             price: parseFloat(netfare) || 0,
             airlineIata: req.body.airlineIata || '' 
         };
-        const markedFlights = await applyAdminMarkup([dummyFlight], serType);
+        const markedFlights = await applyAdminMarkup([dummyFlight], serType, agentCode);
         const adminMarkupApplied = markedFlights[0].adminMarkupApplied || 0;
 
         const baseBookingAmount = parseFloat(netfare) || 0;

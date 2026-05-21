@@ -121,13 +121,7 @@ const GenericSearch = ({ title, type, searchParams, resultKeys, icon }) => {
     );
 };
 
-export const HotelSearch = () => (
-    <GenericSearch 
-        title="Hotel" type="hotel" icon="🏨"
-        searchParams={[{key:'city', label:'Enter Destination City', default:'Mumbai'}, {key:'checkIn', type:'date', label:'Check In Date', default:''}]}
-        resultKeys={{title: 'name', subtitle: 'city'}}
-    />
-);
+
 
 export const BusSearch = () => (
     <GenericSearch 

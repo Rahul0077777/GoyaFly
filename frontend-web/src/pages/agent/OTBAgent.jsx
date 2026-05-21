@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { otbService } from '../../services/otbService';
 import OTBApply from '../public/OTBApply';
 import { toast } from 'react-toastify';
+import heroBg from '../../assets/hero_bg.png';
+import otbAirplaneGraphic from '../../assets/otb_airplane.png';
 
 const OTBAgent = () => {
     const [status, setStatus] = useState('LOADING');
@@ -64,7 +66,7 @@ const OTBAgent = () => {
     };
 
     const handleWalletPayment = async () => {
-        if (!window.confirm(`Activate OTB Lifetime Access using ₹999 from your wallet?`)) return;
+        if (!window.confirm(`Activate OTB Lifetime Access using ₹9999 from your wallet?`)) return;
         
         try {
             setLoading(true);
@@ -91,71 +93,118 @@ const OTBAgent = () => {
 
     if (status === 'NONE' || status === 'REJECTED') {
         return (
-            <div className="max-w-4xl mx-auto animate-fade-in">
-                <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-100">
-                    <div className="bg-primary-700 p-12 text-white md:w-5/12 flex flex-col justify-between relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
-                        <div className="relative z-10">
-                            <span className="text-5xl mb-6 block">🛫</span>
-                            <h2 className="text-4xl font-black mb-4 leading-tight text-white">OK to Board <br/><span className="text-secondary-400">Services</span></h2>
-                            <p className="text-primary-100 font-bold text-sm leading-relaxed mb-10 opacity-80">Unlock the ability to process airline-approved OTB requests for your customers directly through our portal.</p>
-                            
-                            <ul className="space-y-4">
-                                <li className="flex items-center gap-3 text-sm font-bold">
-                                    <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-[10px]">✓</span> 
-                                    Instant Application
-                                </li>
-                                <li className="flex items-center gap-3 text-sm font-bold">
-                                    <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-[10px]">✓</span> 
-                                    Lifetime Access
-                                </li>
-                                <li className="flex items-center gap-3 text-sm font-bold">
-                                    <span className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-[10px]">✓</span> 
-                                    24/7 Admin Support
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
+            <div className="bg-[#F4F7FE] min-h-screen pb-10 font-sans animate-fade-in -mt-6">
+                {/* Blue Header Section */}
+                <div 
+                    className="relative pt-12 pb-32 px-4 rounded-b-[3rem]" 
+                    style={{ backgroundImage: `url(${heroBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#0B4EE3' }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0B359C] to-[#0A2670] opacity-90 rounded-b-[3rem]"></div>
                     
-                    <div className="p-12 md:w-7/12 flex flex-col justify-center items-center text-center">
+                    <div className="relative z-10 max-w-5xl mx-auto">
                         {status === 'REJECTED' && (
-                            <div className="w-full bg-red-50 text-red-600 p-4 rounded-2xl mb-8 font-bold border border-red-100 flex items-center gap-3">
+                            <div className="w-full bg-red-500/90 text-white p-4 rounded-2xl mb-6 font-bold border border-red-400 flex items-center gap-3 backdrop-blur-sm">
                                 <span>⚠️</span> Your previous request was rejected. You can try paying again or contact support.
                             </div>
                         )}
-                        <h3 className="text-3xl font-black text-gray-900 mb-2">Premium Activation</h3>
-                        <p className="text-gray-400 font-bold text-sm mb-12">Activate your account for OTB services with a one-time fee</p>
-                        
-                        <div className="mb-12">
-                            <p className="text-[10px] font-black text-primary-500 uppercase tracking-[0.3em] mb-2">Investment Amount</p>
-                            <p className="text-6xl font-black text-gray-900">₹999<span className="text-lg text-gray-400">/lifetime</span></p>
+                    
+                        {/* Top Badge */}
+                        <div className="inline-flex items-center gap-2 bg-[#2D5A9E]/40 border border-white/10 rounded-full px-3 py-1.5 mb-6 shadow-inner">
+                            <span className="text-white text-xs">🛡️</span>
+                            <span className="text-white text-[10px] font-bold tracking-wide">Trusted by 5000+ Agents</span>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center justify-between">
+                            <div className="md:w-1/2">
+                                <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-3 tracking-tight">
+                                    OK to Board <br/>
+                                    <span className="text-[#FF9F43]">Services</span>
+                                </h1>
+                                <p className="text-white/80 text-sm md:text-base leading-relaxed mb-8 max-w-sm font-medium">
+                                    Unlock the ability to process airline-approved OTB requests for your customers directly through our portal.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 flex justify-center md:justify-end mt-4 md:mt-0">
+                                {/* Airplane Graphic */}
+                                <img src={otbAirplaneGraphic} alt="Airplane" className="w-72 md:w-80 object-contain drop-shadow-2xl" />
+                            </div>
+                        </div>
+
+                        {/* Three Feature Cards */}
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-8 md:max-w-3xl">
+                            <div className="bg-[#0B359C]/40 border border-white/10 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row items-center gap-2 sm:gap-3 md:justify-center backdrop-blur-md shadow-lg">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1A56DB] flex items-center justify-center text-white text-sm sm:text-base shrink-0 shadow-inner">⚡</div>
+                                <span className="text-white text-[10px] sm:text-xs font-bold text-center md:text-left leading-tight">Instant<br/>Application</span>
+                            </div>
+                            <div className="bg-[#0B359C]/40 border border-white/10 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row items-center gap-2 sm:gap-3 md:justify-center backdrop-blur-md shadow-lg">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1A56DB] flex items-center justify-center text-white text-sm sm:text-base shrink-0 shadow-inner">🛡️</div>
+                                <span className="text-white text-[10px] sm:text-xs font-bold text-center md:text-left leading-tight">Lifetime<br/>Access</span>
+                            </div>
+                            <div className="bg-[#0B359C]/40 border border-white/10 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row items-center gap-2 sm:gap-3 md:justify-center backdrop-blur-md shadow-lg">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#1A56DB] flex items-center justify-center text-white text-sm sm:text-base shrink-0 shadow-inner">🎧</div>
+                                <span className="text-white text-[10px] sm:text-xs font-bold text-center md:text-left leading-tight">24/7 Admin<br/>Support</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Overlapping White Card */}
+                <div className="relative z-20 px-4 -mt-24 max-w-lg mx-auto">
+                    <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-6 sm:p-10 text-center border border-gray-100">
+                        <div className="inline-flex items-center gap-2 bg-blue-50 rounded-full px-3 py-1.5 mb-6">
+                            <span className="text-[#1A56DB] text-xs">👑</span>
+                            <span className="text-[#1A56DB] text-[10px] font-black uppercase tracking-widest">Premium Access</span>
+                        </div>
+
+                        <h2 className="text-2xl sm:text-3xl font-black text-[#0B1A42] mb-3">Premium Activation</h2>
+                        <p className="text-gray-500 text-sm sm:text-base font-medium mb-8 max-w-sm mx-auto">Activate your account for OTB services with a one-time fee</p>
+
+                        <div className="border-t border-dashed border-gray-200 w-full mb-8"></div>
+
+                        <p className="text-[#1A56DB] text-[10px] font-black uppercase tracking-[0.2em] mb-2">Investment Amount</p>
+                        <div className="flex justify-center items-end gap-1 mb-8">
+                            <span className="text-5xl sm:text-6xl font-black text-[#0B1A42] leading-none tracking-tighter">₹9999</span>
+                            <span className="text-gray-400 font-bold mb-1 sm:mb-1.5">/lifetime</span>
                         </div>
 
                         <div className="space-y-4">
-                            {agentData?.walletBalance >= 999 ? (
+                            {agentData?.walletBalance >= 9999 ? (
                                 <>
-                                    <button 
-                                        onClick={handleWalletPayment}
-                                        className="w-full py-5 bg-secondary-500 text-white font-extrabold rounded-2xl shadow-xl hover:bg-secondary-600 transition-all transform hover:scale-[1.02] active:scale-95 text-[15px] tracking-widest uppercase flex items-center justify-center gap-3"
-                                    >
-                                        💳 ACTIVATE VIA WALLET
+                                    <button onClick={handleWalletPayment} className="w-full bg-gradient-to-r from-[#FF9F43] to-[#FF9100] text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg shadow-orange-500/30 flex items-center justify-center gap-3 uppercase tracking-wide text-xs sm:text-sm transition-transform hover:scale-[1.02] active:scale-95">
+                                        💳 Recharge Wallet To Activate <span className="text-lg leading-none font-normal">›</span>
                                     </button>
-                                    <p className="text-[10px] text-center text-white/50 font-bold uppercase tracking-widest">₹999 will be deducted from your agency credits</p>
+                                    <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-widest">₹9999 will be deducted from your agency credits</p>
                                 </>
                             ) : (
                                 <>
-                                    <button 
-                                        onClick={() => window.location.href = '/agent/wallet'}
-                                        className="w-full py-5 bg-amber-500 text-white font-extrabold rounded-2xl shadow-xl hover:bg-amber-600 transition-all transform hover:scale-[1.02] active:scale-95 text-[15px] tracking-widest uppercase flex items-center justify-center gap-3"
-                                    >
-                                        ⚠️ RECHARGE WALLET TO ACTIVATE
+                                    <button onClick={() => window.location.href = '/agent/wallet'} className="w-full bg-gradient-to-r from-[#FF9F43] to-[#FF9100] text-white font-black py-4 sm:py-5 rounded-2xl shadow-lg shadow-orange-500/30 flex items-center justify-center gap-3 uppercase tracking-wide text-xs sm:text-sm transition-transform hover:scale-[1.02] active:scale-95">
+                                        👛 Recharge Wallet To Activate <span className="text-lg leading-none font-normal">›</span>
                                     </button>
-                                    <p className="text-[10px] text-center text-white/50 font-bold uppercase tracking-widest">Balance too low (Current: ₹{agentData?.walletBalance?.toLocaleString()})</p>
+                                    <p className="text-[10px] text-center text-red-400 font-bold uppercase tracking-widest">Balance too low (Current: ₹{agentData?.walletBalance?.toLocaleString('en-IN')})</p>
                                 </>
                             )}
                         </div>
-                        <p className="mt-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Secure Payment via Razorpay</p>
+
+                        <div className="flex items-center justify-center gap-2 text-gray-500 mt-8 mb-8">
+                            <span className="text-green-500">🛡️</span>
+                            <span className="text-[10px] sm:text-xs font-bold">Secure Payment via Razorpay</span>
+                        </div>
+
+                        <div className="bg-[#F0F5FF] rounded-2xl p-4 sm:p-5 flex items-center gap-4 text-left border border-blue-50">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#1A56DB] shadow-md flex items-center justify-center text-white text-xl shrink-0">
+                                ★
+                            </div>
+                            <div>
+                                <p className="text-[#0B1A42] text-[10px] sm:text-xs font-black">100% Secure • Fast Processing • Trusted Platform</p>
+                                <p className="text-gray-500 text-[9px] sm:text-[10px] mt-0.5 font-medium">Join thousands of agents growing their business with us.</p>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                {/* Floating Action Button (FAB) */}
+                <div className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-[#4B83F3] to-[#8A4BF3] rounded-full flex items-center justify-center text-white text-2xl shadow-xl shadow-blue-500/30 border-[3px] border-white cursor-pointer hover:scale-105 active:scale-95 transition-transform z-50">
+                    ✨
                 </div>
             </div>
         );

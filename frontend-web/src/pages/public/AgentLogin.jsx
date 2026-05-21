@@ -41,112 +41,100 @@ const AgentLogin = () => {
     };
 
     return (
-        <div className="w-full min-h-screen flex items-center justify-center py-10 px-4 bg-white animate-fade-in">
-            <div className="w-full max-w-6xl bg-white rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col md:flex-row border border-gray-100 min-h-[700px]">
+        <div className="min-h-screen w-full bg-gradient-to-br from-[#f2f7fc] via-[#e5f0f9] to-[#f3f8fc] flex flex-col items-center justify-center py-12 px-4 sm:px-6 font-sans">
+            <div className="w-full max-w-md">
+                {/* Header Logo */}
+                <div className="flex flex-col items-center mb-8">
+                    <Link to="/" className="mb-2">
+                        <span className="text-[#1D4171] text-3xl font-black tracking-tighter italic uppercase">GOYA<span className="text-[#F07E21]">FLY.COM</span></span>
+                    </Link>
+                    <p className="text-[10px] font-black text-blue-900/60 uppercase tracking-[0.3em] font-sans">Smart ways to travel</p>
+                </div>
 
-                {/* Visual Side - Deep Blue #1D4171 */}
-                <div className="w-full md:w-5/12 bg-[#1D4171] relative overflow-hidden flex flex-col justify-center items-center p-12 text-center text-white border-r border-white/5">
-                    {/* Brand Accents */}
-                    <div className="absolute top-0 left-0 w-80 h-80 bg-[#48A0D4]/20 rounded-full blur-[100px] -ml-40 -mt-40 animate-pulse"></div>
-                    <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#F07E21]/10 rounded-full blur-[120px] -mr-48 -mb-48 animate-float"></div>
-
-                    <div className="relative z-10 animate-slide-right">
-                        <Link to="/" className="inline-block mb-12">
-                            <div className="bg-white rounded-2xl px-6 py-3 shadow-2xl border border-white/20 transform hover:scale-105 transition-all">
-                                <span className="text-[#1D4171] text-2xl font-black tracking-tighter italic uppercase">GOYA<span className="text-[#F07E21]">FLY.COM</span></span>
-                            </div>
-                        </Link>
-
-                        <h2 className="text-4xl lg:text-5xl font-black mb-6 tracking-tighter leading-tight uppercase italic">
-                            Welcome <br />
-                            <span className="text-[#F07E21]">Back Agent</span>
-                        </h2>
-
-                        <p className="text-blue-100 text-lg mb-10 max-w-xs mx-auto font-bold opacity-80 italic border-l-4 border-[#48A0D4] pl-6">
-                            "Access your GDS terminal and manage your high-margin bookings with technical precision."
+                {/* Form Card */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-[2.5rem] shadow-[0_20px_50px_rgba(10,100,219,0.06)] border border-blue-50/50 p-6 sm:p-10">
+                    <div className="mb-8 text-center">
+                        <h3 className="text-2xl sm:text-3xl font-black text-blue-900 tracking-tight mb-2 uppercase italic leading-none">
+                            Agent Sign In
+                        </h3>
+                        <p className="text-slate-400 font-bold text-xs sm:text-sm tracking-wide">
+                            Enter your authorized partner credentials to continue.
                         </p>
-
-                        <div className="inline-flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full border border-white/10 backdrop-blur-sm">
-                            <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
-                            <span className="text-xs font-black uppercase tracking-widest">Secure Terminal Online</span>
-                        </div>
                     </div>
 
-                    {/* Side Panel Bottom Marquee */}
-                    <div className="absolute bottom-0 left-0 w-full overflow-hidden py-6 border-t border-white/5">
-                        <div className="flex animate-marquee whitespace-nowrap gap-12 text-[10px] font-black tracking-[0.4em] uppercase text-white/20">
-                            <span>🚀 INSTANT GDS TICKETING</span>
-                            <span>💎 ZERO CONVENIENCE FEES</span>
-                            <span>🌍 1M+ HOTEL INVENTORY</span>
-                            <span>🚀 INSTANT GDS TICKETING</span>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Authorized Email Address */}
+                        <div className="bg-white border border-blue-100 rounded-3xl p-3 flex items-center gap-4 shadow-[0_8px_20px_rgba(10,100,219,0.02)] transition-all focus-within:border-blue-300 focus-within:shadow-[0_8px_25px_rgba(10,100,219,0.06)]">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 text-lg shrink-0">📧</div>
+                            <div className="flex-1 flex flex-col min-w-0">
+                                <label className="text-[9px] font-black text-blue-900 uppercase tracking-widest mb-0.5">Authorized Email Address</label>
+                                <input
+                                    type="email"
+                                    required
+                                    className="w-full bg-transparent border-none outline-none font-bold text-sm text-slate-800 placeholder-slate-300"
+                                    placeholder="agent@goyafly.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
                         </div>
+
+                        {/* Access Password */}
+                        <div className="bg-white border border-blue-100 rounded-3xl p-3 flex items-center gap-4 shadow-[0_8px_20px_rgba(10,100,219,0.02)] transition-all focus-within:border-blue-300 focus-within:shadow-[0_8px_25px_rgba(10,100,219,0.06)]">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 text-lg shrink-0">🔐</div>
+                            <div className="flex-1 flex flex-col min-w-0">
+                                <label className="text-[9px] font-black text-blue-900 uppercase tracking-widest mb-0.5">Access Password</label>
+                                <input
+                                    type="password"
+                                    required
+                                    className="w-full bg-transparent border-none outline-none font-bold text-sm text-slate-800 placeholder-slate-300"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 animate-bounce-in">
+                                <span className="text-xl">⚠️</span>
+                                <p className="text-red-700 text-xs font-black">{error}</p>
+                            </div>
+                        )}
+
+                        {/* Login Button */}
+                        <div className="pt-4">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full h-16 bg-gradient-to-r from-blue-600 via-blue-500 to-orange-500 hover:shadow-xl hover:shadow-blue-500/10 text-white font-black rounded-3xl transition-all transform active:scale-98 text-sm tracking-[0.2em] uppercase flex items-center justify-between pl-8 pr-3 relative overflow-hidden group shadow-lg"
+                            >
+                                <span>{loading ? 'VALIDATING...' : 'SECURE LOGIN'}</span>
+                                <div className="w-10 h-10 rounded-full bg-orange-600/90 flex items-center justify-center shadow-md group-hover:scale-105 transition-all text-sm">
+                                    {loading ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+                                    ) : (
+                                        '✨'
+                                    )}
+                                </div>
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* Registration Redirect */}
+                    <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+                        <Link to="/register" className="inline-flex items-center gap-2 group">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New to Goyafly?</span>
+                            <span className="text-xs font-black text-blue-900 group-hover:underline">Request Partnership</span>
+                            <span className="text-orange-500 group-hover:translate-x-1 smooth-transition">➔</span>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Form Side - Clear Visibility #000000 */}
-                <div className="w-full md:w-7/12 p-10 md:p-20 relative bg-white flex flex-col justify-center">
-                    <div className="mb-12">
-                        <h3 className="text-4xl font-black text-black mb-3 uppercase italic tracking-tighter leading-none">Security Access</h3>
-                        <p className="text-gray-400 font-bold text-sm tracking-wide">Enter your authorized partner credentials to continue.</p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-8">
-                        <div className="space-y-3 group">
-                            <label className="block text-[10px] font-black text-black uppercase tracking-widest ml-1 italic group-focus-within:text-[#1D4171] smooth-transition">📧 Authorized Email Address</label>
-                            <input
-                                type="email"
-                                required
-                                className="w-full h-16 px-6 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#1D4171] focus:bg-white smooth-transition font-bold text-sm text-black outline-none placeholder:text-gray-300 shadow-sm"
-                                placeholder="agent@goyafly.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-3 group">
-                            <label className="block text-[10px] font-black text-black uppercase tracking-widest ml-1 italic group-focus-within:text-[#1D4171] smooth-transition">🔐 Access Password</label>
-                            <input
-                                type="password"
-                                required
-                                className="w-full h-16 px-6 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#1D4171] focus:bg-white smooth-transition font-bold text-sm text-black outline-none placeholder:text-gray-300 shadow-sm"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-
-                        {error && <div className="bg-red-50 border-2 border-red-100 text-red-700 p-5 rounded-2xl text-xs font-black flex items-center gap-4 animate-bounce-in">
-                            <span className="text-2xl">⚠️</span>
-                            <span>{error}</span>
-                        </div>}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full h-16 sm:h-20 bg-[#F07E21] hover:bg-[#d96c13] text-white font-black rounded-2xl shadow-2xl hover:shadow-[#F07E21]/40 transition-all transform hover:scale-[1.05] active:scale-95 text-xs tracking-[0.3em] uppercase disabled:opacity-50 mt-8"
-                        >
-                            {loading ? (
-                                <span className="flex items-center justify-center gap-3">
-                                    <div className="w-5 h-5 border-3 border-white border-t-transparent animate-spin rounded-full"></div>
-                                    VALIDATING...
-                                </span>
-                            ) : (
-                                '🔐 SECURE TERMINAL LOGIN'
-                            )}
-                        </button>
-                    </form>
-
-                    <div className="mt-16 pt-10 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-6">
-                        <div className="text-center sm:text-left">
-                            <p className="text-gray-400 font-bold text-xs mb-1">New to Goyafly.com?</p>
-                            <Link to="/register" className="text-[#1D4171] font-black text-sm uppercase tracking-widest hover:underline hover:text-[#48A0D4] transition-all">
-                                Request Partnership ➔
-                            </Link>
-                        </div>
-                        <p className="text-gray-300 text-[10px] font-black uppercase tracking-[0.4em]">
-                            PCI-DSS SECURE
-                        </p>
-                    </div>
+                {/* Footer Security Badge */}
+                <div className="mt-8 flex items-center justify-center gap-2 text-slate-500 text-xs font-bold">
+                    <span className="text-green-500 text-sm">🛡️</span>
+                    <span>PCI-DSS Secure Endpoint Terminal</span>
                 </div>
             </div>
         </div>

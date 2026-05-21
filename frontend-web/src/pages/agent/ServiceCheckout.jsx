@@ -69,35 +69,35 @@ const ServiceCheckout = () => {
     return (
         <div className="flex-1 bg-[#f8fafc] min-h-[calc(100vh-64px)] pb-12 animate-fade-in">
             {/* Header */}
-            <div className="bg-[#1D4171] w-full pt-10 pb-40 px-6">
+            <div className="bg-[#1D4171] w-full pt-8 sm:pt-10 pb-32 sm:pb-40 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex items-center gap-3 mb-3">
                         <span className="bg-[#48A0D4]/20 text-[#48A0D4] text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border border-[#48A0D4]/30">
                             {service} BOOKING
                         </span>
                     </div>
-                    <h1 className="text-white text-4xl font-black italic tracking-tight mb-2">Complete your <span className="text-[#48A0D4]">Request</span></h1>
-                    <p className="text-slate-200 text-sm font-bold opacity-80 uppercase tracking-widest">A customized expert will process your application shortly</p>
+                    <h1 className="text-white text-3xl sm:text-4xl font-black italic tracking-tight mb-2">Complete your <span className="text-[#48A0D4]">Request</span></h1>
+                    <p className="text-slate-200 text-xs sm:text-sm font-bold opacity-80 uppercase tracking-widest">A customized expert will process your application shortly</p>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 -mt-24 relative z-10">
-                <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-16 sm:-mt-24 relative z-10">
+                <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 items-start">
                     
                     {/* Package Review Card */}
                     <div className="w-full lg:w-[40%] space-y-6 lg:sticky top-6">
-                        <div className="bg-white rounded-[3rem] shadow-2xl border border-slate-200/50 overflow-hidden transform transition-all duration-500 hover:shadow-[#1D4171]/10">
-                            <div className="bg-[#1D4171] p-10 relative overflow-hidden">
+                        <div className="bg-white rounded-3xl sm:rounded-[3rem] shadow-2xl border border-slate-200/50 overflow-hidden transform transition-all duration-500 hover:shadow-[#1D4171]/10">
+                            <div className="bg-[#1D4171] p-6 sm:p-10 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#48A0D4]/10 rounded-full -mr-16 -mt-16"></div>
-                                <h2 className="text-white font-black text-2xl mb-2 flex items-center justify-between relative z-10">
+                                <h2 className="text-white font-black text-xl sm:text-2xl mb-2 flex items-center justify-between relative z-10">
                                     {item.title || item.country}
                                 </h2>
-                                <p className="text-[#48A0D4] text-sm font-black uppercase tracking-widest relative z-10">
+                                <p className="text-[#48A0D4] text-xs sm:text-sm font-black uppercase tracking-widest relative z-10">
                                     {item.days || 'Service Plan'} • {item.type || 'Luxury'}
                                 </p>
                             </div>
 
-                            <div className="p-10 space-y-8">
+                            <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
                                 <div className="flex justify-between items-center bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Estimated Cost</p>
@@ -148,9 +148,9 @@ const ServiceCheckout = () => {
 
                     {/* Booking Form */}
                     <div className="w-full lg:w-[60%]">
-                        <form onSubmit={handleSubmit} className="space-y-8">
-                            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/50 p-10 animate-slide-up">
-                                <h3 className="text-xl font-black text-slate-900 mb-10 flex items-center gap-4">
+                        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                            <div className="bg-white rounded-3xl sm:rounded-[3rem] shadow-xl border border-slate-200/50 p-6 sm:p-10 animate-slide-up">
+                                <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 sm:mb-10 flex items-center gap-4">
                                     <span className="w-1.5 h-6 bg-[#1D4171] rounded-full"></span>
                                     Plan Details
                                 </h3>
@@ -195,8 +195,8 @@ const ServiceCheckout = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-200/50 p-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                                <h3 className="text-xl font-black text-slate-900 mb-10 flex items-center gap-4">
+                            <div className="bg-white rounded-3xl sm:rounded-[3rem] shadow-xl border border-slate-200/50 p-6 sm:p-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                                <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-6 sm:mb-10 flex items-center gap-4">
                                     <span className="w-1.5 h-6 bg-[#F07E21] rounded-full"></span>
                                     Lead Passenger & Contact
                                 </h3>
@@ -251,7 +251,7 @@ const ServiceCheckout = () => {
                             <button 
                                 type="submit" 
                                 disabled={loading}
-                                className="w-full bg-[#F07E21] text-white font-black py-6 rounded-[2rem] uppercase tracking-[0.3em] text-[15px] shadow-2xl hover:bg-[#d66e1b] hover:-translate-y-2 transition-all active:scale-95 flex items-center justify-center gap-4"
+                                className="w-full bg-[#F07E21] text-white font-black py-4 sm:py-6 rounded-2xl sm:rounded-[2rem] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[13px] sm:text-[15px] shadow-2xl hover:bg-[#d66e1b] hover:-translate-y-2 transition-all active:scale-95 flex items-center justify-center gap-4"
                             >
                                 {loading ? (
                                     <>

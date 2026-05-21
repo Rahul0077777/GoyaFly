@@ -24,6 +24,10 @@ const markupRuleSchema = new mongoose.Schema({
         type: Number, 
         required: true 
     },
+    targetAgentCode: { 
+        type: String, 
+        default: 'ALL' // Can be an Agent Code like 'GF10005'
+    },
     priority: { 
         type: Number, 
         default: 0 // Specific rules should have higher priority (e.g., 10)

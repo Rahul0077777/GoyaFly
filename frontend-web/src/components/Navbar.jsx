@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService, adminService, walletService } from '../services/api';
+import { agentLinks, adminLinks, agentDropdownLinks } from '../config/navigation';
 import goyaflyLogo from '../assets/goyafly_logo.png';
+import heroBg from '../assets/hero_bg.png';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -11,33 +13,6 @@ const Navbar = () => {
   const isHome = location.pathname === '/';
   const isAdmin = location.pathname.startsWith('/admin');
   const isAgent = location.pathname.startsWith('/agent');
-
-  const agentLinks = [
-    { name: 'Dashboard', path: '/agent/dashboard', icon: '📊' },
-    { name: 'Flight Search', path: '/agent/flight-search', icon: '✈️' },
-    { name: 'Hotel Search', path: '/agent/hotel-search', icon: '🏨' },
-    { name: 'Bus & Train', path: '/agent/surface-transport', icon: '🚌' },
-    { name: 'Holidays', path: '/agent/holidays', icon: '🏝️' },
-    { name: 'Visa & Insure', path: '/agent/visa-insurance', icon: '🛡️' },
-    { name: 'My Wallet', path: '/agent/wallet', icon: '💰' },
-    { name: 'Notifications', path: '/agent/notifications', icon: '🔔' },
-    { name: 'Support Tickets', path: '/agent/tickets', icon: '🎫' },
-    { name: 'My Profile', path: '/agent/profile', icon: '👤' },
-  ];
-
-  const adminLinks = [
-    { name: 'Overview', path: '/admin/dashboard', icon: '🏠' },
-    { name: 'OTB Requests', path: '/admin/otb', icon: '📑' },
-    { name: 'Promotions', path: '/admin/promotions', icon: '📢' },
-    { name: 'Agent Manager', path: '/admin/agents', icon: '👥' },
-    { name: 'Sub-Agents', path: '/admin/sub-agents', icon: '🌳' },
-    { name: 'Bookings', path: '/admin/bookings', icon: '🎟️' },
-    { name: 'Commissions', path: '/admin/commissions', icon: '📈' },
-    { name: 'Tax Config', path: '/admin/tax-config', icon: '⚖️' },
-    { name: 'Campaigns', path: '/admin/offers', icon: '🏷️' },
-    { name: 'Analytics', path: '/admin/reports', icon: '📊' },
-    { name: 'Global Settings', path: '/admin/settings', icon: '⚙️' },
-  ];
   const [walletBalance, setWalletBalance] = useState(0);
   const [agentInfo, setAgentInfo] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -99,9 +74,10 @@ const Navbar = () => {
   }, [isAgent]);
 
   return (
-    <nav className={`sticky top-0 z-50 w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex justify-between items-center border-b backdrop-blur-2xl smooth-transition touch-target ${
-      isHome ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border-primary-500 shadow-lg' : 'bg-white/80 dark:bg-slate-900/80 text-gray-900 dark:text-white border-gray-100 dark:border-slate-800 shadow-sm'
-    }`}>
+    <>
+      <nav className={`sticky top-0 z-50 w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex justify-between items-center border-b backdrop-blur-2xl smooth-transition touch-target ${
+        isHome ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border-primary-500 shadow-lg' : 'bg-white/80 dark:bg-slate-900/80 text-gray-900 dark:text-white border-gray-100 dark:border-slate-800 shadow-sm'
+      }`}>
       <Link to="/" className="flex items-center group flex-shrink-0">
         <div className="bg-white rounded-2xl px-3 py-1.5 shadow-md group-hover:shadow-lg group-hover:scale-105 smooth-transition border border-white/60">
           <img
@@ -179,14 +155,7 @@ const Navbar = () => {
 
                   {/* Dropdown Links */}
                   <div className="p-4 space-y-1">
-                    {[
-                      { name: 'My Bookings', path: '/agent/history', icon: '🎟️' },
-                      { name: 'Statement', path: '/agent/ledger', icon: '📒' },
-                      { name: 'My Refunds', path: '/agent/my-refunds', icon: '🔄' },
-                      { name: 'Group Fares', path: '/agent/group-fares', icon: '👥' },
-                      { name: 'My Profile', path: '/agent/profile', icon: '👤' },
-                      { name: 'Calendar', path: '/agent/calendar', icon: '📅' },
-                    ].map(item => (
+                    {agentDropdownLinks.map(item => (
                       <Link 
                         key={item.path} 
                         to={item.path} 
@@ -235,10 +204,10 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
+      {/* Mobile Menu Overlay for Non-Agents */}
+      {isMobileMenuOpen && !isAgent && (
         <div className="absolute top-[56px] sm:top-[65px] left-0 w-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col items-stretch py-4 px-4 border-t border-gray-100 dark:border-slate-800 lg:hidden animate-slide-down origin-top max-h-[calc(100vh-60px)] overflow-y-auto z-50">
-          {!isAdmin && !isAgent && (
+          {!isAdmin && (
             <div className="flex flex-col gap-2">
               <Link onClick={() => setIsMobileMenuOpen(false)} to="/" className="flex items-center gap-3 text-base font-bold text-gray-800 dark:text-gray-200 hover:text-primary-500 smooth-transition px-4 py-3.5 touch-target rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800">
                 <span className="text-lg">🏠</span> Home
@@ -256,26 +225,6 @@ const Navbar = () => {
               <Link onClick={() => setIsMobileMenuOpen(false)} to="/register" className="w-full text-center px-4 py-3.5 rounded-xl text-base font-black bg-gradient-to-r from-[#F07E21] to-[#FF9F43] text-white hover:shadow-lg hover:shadow-orange-500/40 smooth-transition touch-target uppercase tracking-wide shadow-md">
                 🚀 Register Now
               </Link>
-            </div>
-          )}
-          
-          {isAgent && (
-            <div className="flex flex-col gap-1 w-full pb-4">
-              <div onClick={() => { setIsMobileMenuOpen(false); navigate('/agent/wallet'); }} className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-100 rounded-lg w-full cursor-pointer touch-target hover:bg-gray-100 mb-3">
-                <span className="text-xs font-black text-gray-400">WALLET:</span>
-                <span className="text-base font-black text-primary-600">₹{walletBalance.toLocaleString('en-IN')}</span>
-              </div>
-              
-              {/* Agent Menu Options Sliding List */}
-              <div className="flex flex-col gap-1 border-t border-gray-50 pt-2 mb-3">
-                {agentLinks.map(link => (
-                  <Link key={link.path} onClick={() => setIsMobileMenuOpen(false)} to={link.path} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-lg touch-target">
-                    <span className="text-lg">{link.icon}</span> {link.name}
-                  </Link>
-                ))}
-              </div>
-
-              <button onClick={() => { authService.agentLogout(); navigate('/'); }} className="w-full text-base font-bold text-secondary-500 mt-2 px-4 py-3 bg-secondary-50 border border-secondary-100 rounded-lg touch-target hover:bg-secondary-100">Logout</button>
             </div>
           )}
 
@@ -297,7 +246,141 @@ const Navbar = () => {
           )}
         </div>
       )}
-    </nav>
+      </nav>
+
+      {/* Full Screen Mobile Menu Overlay for Agents */}
+      {isMobileMenuOpen && isAgent && (
+        <div className="fixed inset-0 z-[100] bg-[#F4F7FE] flex flex-col overflow-hidden animate-fade-in lg:hidden">
+          {/* Header Section */}
+          <div 
+            className="relative pt-6 pb-20 px-4 rounded-b-[2.5rem] shrink-0" 
+            style={{ backgroundImage: `url(${heroBg})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#0B4EE3' }}
+          >
+             <div className="absolute inset-0 bg-gradient-to-br from-[#0B359C] to-[#0A2670] opacity-90 rounded-b-[2.5rem]"></div>
+             
+             <div className="relative z-10 flex justify-between items-center mb-6 sm:mb-8">
+                <div className="bg-white rounded-full h-9 px-4 shadow-lg inline-flex items-center justify-center shrink-0">
+                   <img src={goyaflyLogo} alt="Goyafly" className="h-4 sm:h-5 w-auto" />
+                </div>
+                <div className="flex gap-2 shrink-0">
+                   <button onClick={toggleTheme} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 flex items-center justify-center text-yellow-400 border border-white/20 text-sm">🌙</button>
+                   <button onClick={() => setIsMobileMenuOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/20 text-sm">✖</button>
+                </div>
+             </div>
+
+             <div className="relative z-10 flex items-center gap-3 sm:gap-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-white/20 flex shrink-0 items-center justify-center text-white font-bold text-xl bg-blue-500/30 backdrop-blur-sm shadow-inner">
+                   {agentInfo?.firstName?.charAt(0) || 'D'}{agentInfo?.lastName?.charAt(0) || 'A'}
+                </div>
+                <div className="min-w-0 flex-1">
+                   <div className="flex items-center gap-1.5 mb-1">
+                     <h3 className="text-white font-black text-base sm:text-lg leading-tight truncate">{agentInfo?.firstName || 'Demo'} {agentInfo?.lastName || 'Agent'}</h3>
+                     <span className="text-white text-[10px] bg-blue-500 rounded-full w-4 h-4 flex shrink-0 items-center justify-center">✓</span>
+                   </div>
+                   <p className="text-white/80 text-[11px] sm:text-xs mb-1.5 font-medium truncate">{agentInfo?.agencyName || 'GoyaFly Demo Agency'}</p>
+                   <div className="bg-white/20 inline-flex px-2 py-0.5 rounded text-[9px] sm:text-[10px] text-white font-bold tracking-wide">ID: {agentInfo?.agentCode || 'GF10001'}</div>
+                </div>
+             </div>
+          </div>
+
+          {/* Wallet Card Overlapping */}
+          <div className="px-4 -mt-12 relative z-20 shrink-0">
+             <div className="bg-[#0B1A42] rounded-3xl p-4 sm:p-5 shadow-2xl flex items-center justify-between border border-white/10 gap-2">
+                <div className="flex gap-2.5 sm:gap-3 items-center min-w-0">
+                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] sm:rounded-[14px] bg-[#FFF3E5] flex shrink-0 items-center justify-center text-xl sm:text-2xl">
+                     👛
+                   </div>
+                   <div className="min-w-0">
+                     <p className="text-white/60 text-[8px] sm:text-[9px] font-black tracking-widest uppercase mb-0.5 truncate">Wallet Balance</p>
+                     <p className="text-white text-[1.15rem] sm:text-2xl font-black leading-none truncate">₹{walletBalance.toLocaleString('en-IN')}</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                   <button onClick={() => { setIsMobileMenuOpen(false); navigate('/agent/wallet'); }} className="bg-[#FF9100] text-white text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl shadow-md shrink-0 whitespace-nowrap">+ Add</button>
+                   <span className="text-white/40 text-lg shrink-0 hidden xs:inline-block">›</span>
+                </div>
+             </div>
+          </div>
+
+          {/* Menu Items (Scrollable) */}
+          <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 space-y-2.5 scroll-thin">
+             {agentLinks.map(link => {
+               const isActive = location.pathname === link.path;
+               return (
+                 <Link key={link.path} onClick={() => setIsMobileMenuOpen(false)} to={link.path} 
+                   className={`flex items-center justify-between p-3.5 rounded-2xl transition-all border ${
+                     isActive ? 'bg-[#F2F6FF] border-[#4B83F3]/20 shadow-sm border-l-[3px] border-l-[#4B83F3]' : 'bg-white border-transparent shadow-[0_2px_12px_rgba(0,0,0,0.02)]'
+                   }`}
+                 >
+                   <div className="flex items-center gap-4">
+                     <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center text-xl shadow-sm ${isActive ? 'bg-[#E3EBFF] text-[#4B83F3]' : 'bg-[#F8FAFC] text-gray-500'}`}>
+                       {link.icon}
+                     </div>
+                     <span className={`font-black text-sm ${isActive ? 'text-[#1A56DB]' : 'text-gray-800'}`}>{link.name}</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+                     {link.name === 'Notifications' && <span className="bg-[#FF9100] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">3</span>}
+                     <span className={`text-xl leading-none pb-1 ${isActive ? 'text-[#4B83F3]' : 'text-gray-300'}`}>{isActive ? '⌄' : '›'}</span>
+                   </div>
+                 </Link>
+               );
+             })}
+
+             <div className="border-t border-gray-200/60 my-4"></div>
+             <p className="px-3 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">My Account</p>
+
+             {agentDropdownLinks.filter(link => !agentLinks.some(al => al.path === link.path)).map(link => {
+               const isActive = location.pathname === link.path;
+               return (
+                 <Link key={link.path} onClick={() => setIsMobileMenuOpen(false)} to={link.path} 
+                   className={`flex items-center justify-between p-3.5 rounded-2xl transition-all border ${
+                     isActive ? 'bg-[#F2F6FF] border-[#4B83F3]/20 shadow-sm border-l-[3px] border-l-[#4B83F3]' : 'bg-white border-transparent shadow-[0_2px_12px_rgba(0,0,0,0.02)]'
+                   }`}
+                 >
+                   <div className="flex items-center gap-4">
+                     <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center text-xl shadow-sm ${isActive ? 'bg-[#E3EBFF] text-[#4B83F3]' : 'bg-[#F8FAFC] text-gray-500'}`}>
+                       {link.icon}
+                     </div>
+                     <span className={`font-black text-sm ${isActive ? 'text-[#1A56DB]' : 'text-gray-800'}`}>{link.name}</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+                     <span className={`text-xl leading-none pb-1 ${isActive ? 'text-[#4B83F3]' : 'text-gray-300'}`}>{isActive ? '⌄' : '›'}</span>
+                   </div>
+                 </Link>
+               );
+             })}
+
+             <Link onClick={() => { authService.agentLogout(); navigate('/'); }} className="flex items-center justify-between p-3.5 rounded-2xl transition-all border bg-red-50 border-red-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] mt-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-[12px] flex items-center justify-center text-xl shadow-sm bg-white text-red-500">
+                    🚪
+                  </div>
+                  <span className="font-black text-sm text-red-600">Logout</span>
+                </div>
+             </Link>
+          </div>
+
+          {/* Bottom Support Banner */}
+          <div className="px-4 pb-6 shrink-0 relative mt-2">
+             <div className="bg-gradient-to-r from-[#F0F4FF] to-[#FFF5F0] rounded-[20px] p-4 flex items-center justify-between border border-white shadow-md relative overflow-hidden pr-16">
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl drop-shadow-sm">🎧</div>
+                  <div>
+                    <p className="font-black text-[#0B1A42] text-sm leading-tight mb-0.5">Need Help?</p>
+                    <p className="text-gray-500 text-[9px] font-bold">Our support team is here for you 24/7</p>
+                  </div>
+                </div>
+                <button onClick={() => { setIsMobileMenuOpen(false); navigate('/agent/tickets'); }} className="bg-white border border-[#4B83F3]/30 text-[#4B83F3] font-bold text-[11px] px-3 py-1.5 rounded-xl shadow-sm relative z-10">Contact Support</button>
+             </div>
+             
+             {/* Floating Action Button */}
+             <button className="absolute top-0 right-6 w-14 h-14 bg-gradient-to-br from-[#4B83F3] to-[#8A4BF3] rounded-full flex items-center justify-center text-white text-2xl shadow-xl shadow-blue-500/30 border-[3px] border-white transform -translate-y-1/2 hover:scale-105 active:scale-95 transition-transform">
+               ✨
+             </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

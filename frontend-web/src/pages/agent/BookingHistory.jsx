@@ -185,7 +185,7 @@ const BookingHistory = () => {
             {/* 1. Header with Image Background */}
             <div className="bg-[url('https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?auto=format&fit=crop&q=80&w=2069')] bg-cover bg-center h-[280px] w-full relative">
                 <div className="absolute inset-0 bg-[#1D4171]/40"></div>
-                <div className="max-w-[1400px] mx-auto px-10 pt-10 relative z-10 flex flex-col h-full">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 pt-8 sm:pt-10 relative z-10 flex flex-col h-full">
                     <h1 className="text-white text-3xl font-bold mb-10 tracking-tight">My Bookings</h1>
 
                     {/* Tabs Bar */}
@@ -194,7 +194,7 @@ const BookingHistory = () => {
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`px-10 py-3.5 rounded-t-xl text-[13px] font-bold uppercase transition-all duration-300 min-w-[120px] ${activeTab === tab.key
+                                className={`px-6 sm:px-10 py-3.5 rounded-t-xl text-[12px] sm:text-[13px] font-bold uppercase transition-all duration-300 min-w-[100px] sm:min-w-[120px] ${activeTab === tab.key
                                         ? 'bg-white text-slate-800'
                                         : 'bg-slate-700/60 text-white hover:bg-slate-700/80'
                                     }`}
@@ -206,7 +206,7 @@ const BookingHistory = () => {
                 </div>
             </div>
 
-            <div className="max-w-[1400px] mx-auto px-10 -mt-10">
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 -mt-10">
                 {/* 2. Floating Filter Card */}
                 <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 mb-10 border border-slate-100 relative z-20">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
@@ -357,30 +357,26 @@ const BookingHistory = () => {
                                         </td>
 
                                         {/* TRAVEL INFORMATION */}
-                                        <td className="px-8 py-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1.5fr] gap-x-12 gap-y-4">
-                                                <div className="flex flex-col">
+                                        <td className="px-6 py-6">
+                                            <div className="flex flex-wrap items-start gap-x-8 gap-y-5 min-w-[280px]">
+                                                <div className="flex flex-col max-w-[120px]">
                                                     <span className="text-[9px] font-bold text-slate-300 uppercase mb-1">Name</span>
-                                                    <span className="text-[11px] font-bold text-slate-700 uppercase">{getPaxName(b)}</span>
+                                                    <span className="text-[11px] font-bold text-slate-700 uppercase truncate" title={getPaxName(b)}>{getPaxName(b)}</span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[9px] font-bold text-slate-300 uppercase mb-1">Airline</span>
                                                     <span className="text-[11px] font-bold text-slate-600 leading-tight">
                                                         {b.airline || 'Carrier'}<br />
-                                                        <span className="text-[10px] text-sky-400">Instant Offers,</span>
+                                                        <span className="text-[9px] text-sky-500">Instant Offers</span>
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[9px] font-bold text-slate-300 uppercase mb-1">Travel Date</span>
                                                     <span className="text-[11px] font-bold text-slate-700">{new Date(b.travelDate || b.createdAt).toLocaleDateString()}</span>
                                                 </div>
-                                                <div className="flex flex-col col-span-3 mt-1">
-                                                    <div className="flex items-center gap-8">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PNR</span>
-                                                            <span className="text-[11px] font-bold text-emerald-500 uppercase font-mono tracking-tighter">{b.providerReference || 'N/A'}</span>
-                                                        </div>
-                                                    </div>
+                                                <div className="flex flex-col w-full">
+                                                    <span className="text-[8px] font-bold text-slate-400 uppercase mb-0.5">PNR</span>
+                                                    <span className="text-[11px] font-bold text-emerald-500 uppercase font-mono tracking-tighter">{b.providerReference || 'N/A'}</span>
                                                 </div>
                                             </div>
                                         </td>

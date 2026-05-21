@@ -101,7 +101,9 @@ const getAllAgents = async (req, res, next) => {
             $or: [
                 { agencyName: { $regex: search, $options: 'i' } },
                 { emailAddress: { $regex: search, $options: 'i' } },
-                { mobileNumber: { $regex: search, $options: 'i' } }
+                { mobileNumber: { $regex: search, $options: 'i' } },
+                { agentCode: { $regex: search, $options: 'i' } },
+                { agentName: { $regex: search, $options: 'i' } }
             ]
         } : {};
 

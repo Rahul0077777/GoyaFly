@@ -401,8 +401,12 @@ export const adminService = {
         const response = await api.put(`/admin/agents/${agentId}/approve`, data);
         return response.data;
     },
-    getAgents: async () => {
-        const response = await api.get('/admin/agents');
+    getAgents: async (search = '') => {
+        const response = await api.get('/admin/agents', { params: { search, limit: 100 } });
+        return response.data;
+    },
+    searchAgentByCode: async (agentCode) => {
+        const response = await api.get('/admin/agents', { params: { search: agentCode, limit: 50 } });
         return response.data;
     },
     deleteAgent: async (agentId) => {

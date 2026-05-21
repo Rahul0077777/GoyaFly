@@ -4,7 +4,7 @@ const setMarkupRule = async (req, res, next) => {
     try {
         console.log('MARKUP_SAVE_REQUEST_BODY:', req.body);
         console.log('MARKUP_SAVE_REQUEST_USER:', req.user ? req.user._id : 'NO_USER');
-        const { serviceType, airline, refundType, markupType, markupValue, priority, isActive } = req.body;
+        const { serviceType, airline, refundType, markupType, markupValue, priority, isActive, targetAgentCode } = req.body;
         
         // Validation
         if (markupValue === undefined || markupValue === null || isNaN(Number(markupValue))) {
@@ -14,14 +14,16 @@ const setMarkupRule = async (req, res, next) => {
         const filter = { 
             serviceType: serviceType || 'DOMESTIC_FLIGHT', 
             airline: airline || 'ALL', 
-            refundType: refundType || 'All' 
+            refundType: refundType || 'All',
+            targetAgentCode: targetAgentCode || 'ALL'
         };
 
         const update = { 
             markupType: markupType || 'Fixed', 
             markupValue: Number(markupValue), 
             priority: Number(priority) || 0, 
-            isActive: isActive !== undefined ? isActive : true 
+            isActive: isActive !== undefined ? isActive : true,
+            targetAgentCode: targetAgentCode || 'ALL'
         };
 
         const rule = await MarkupRule.findOneAndUpdate(filter, update, { 

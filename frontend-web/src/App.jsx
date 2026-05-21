@@ -13,7 +13,9 @@ import BookingHistory from './pages/agent/BookingHistory';
 import EarningsReport from './pages/agent/EarningsReport';
 import VisaInsurance from './pages/agent/VisaInsurance';
 import BusTrainSearch from './pages/agent/BusTrainSearch';
-import { HotelSearch, BusSearch, TrainSearch } from './pages/agent/GenericSearchComponents';
+import { BusSearch, TrainSearch } from './pages/agent/GenericSearchComponents';
+import HotelSearch from './pages/agent/HotelSearch';
+import HotelCheckout from './pages/agent/HotelCheckout';
 import OTBApply from './pages/public/OTBApply';
 import OTBStatus from './pages/public/OTBStatus';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -86,11 +88,14 @@ function GlobalMarquee() {
 }
 
 function AppContent() {
+  const { pathname } = useLocation();
+  const isAuthPage = pathname === '/register' || pathname === '/login' || pathname === '/admin/login';
+
   return (
     <div className="min-h-screen bg-[#f4f7fe] dark:bg-slate-900 flex flex-col font-sans transition-colors duration-300 w-full min-w-0 overflow-x-hidden">
-      <Navbar />
-      <GlobalMarquee />
-      <div className="flex flex-1 w-full min-w-0 overflow-x-hidden">
+      {!isAuthPage && <Navbar />}
+      {!isAuthPage && <GlobalMarquee />}
+      <div className="flex flex-1 w-full min-w-0 overflow-x-clip">
         <Routes>
           {/* Public Routes - No Sidebar */}
           <Route path="/" element={<Home />} />
@@ -105,9 +110,9 @@ function AppContent() {
           {/* Agent Routes - With Sidebars */}
           <Route path="/agent/*" element={
             <ProtectedRoute requiredRole="agent">
-              <div className="flex w-full min-w-0 overflow-x-hidden">
+              <div className="flex w-full min-w-0 overflow-x-clip">
                 <Sidebar type="agent" />
-                <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
+                <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-clip">
                 <Routes>
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
@@ -117,6 +122,7 @@ function AppContent() {
                   <Route path="visa-insurance" element={<VisaInsurance />} />
                   <Route path="surface-transport" element={<BusTrainSearch />} />
                   <Route path="hotel-search" element={<HotelSearch />} />
+                  <Route path="hotel-checkout" element={<HotelCheckout />} />
                   <Route path="bus-search" element={<BusSearch />} />
                   <Route path="train-search" element={<TrainSearch />} />
                   <Route path="profile" element={<AgentProfile />} />
@@ -144,9 +150,9 @@ function AppContent() {
           {/* Admin Routes - With Sidebars */}
           <Route path="/admin/*" element={
             <ProtectedRoute requiredRole="admin">
-              <div className="flex w-full min-w-0 overflow-x-hidden">
+              <div className="flex w-full min-w-0 overflow-x-clip">
                 <Sidebar type="admin" />
-                <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
+                <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-clip">
                 <Routes>
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="agents" element={<AgentManager />} />
@@ -187,7 +193,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <Footer />
+      {!isAuthPage && <Footer />}
       <AIChatWidget />
       <ToastContainer 
         position="top-right"
