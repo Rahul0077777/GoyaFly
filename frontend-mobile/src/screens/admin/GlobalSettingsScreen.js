@@ -1,46 +1,141 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../utils/themeColors';
-
-const API_SERVICES = [
-    { name: 'Sabre GDS', status: 'Online', color: '#22c55e', icon: 'airplane' },
-    { name: 'Amadeus', status: 'Online', color: '#22c55e', icon: 'globe' },
-    { name: 'BusIndia API', status: 'Degraded', color: '#f97316', icon: 'bus' },
-    { name: 'Wallet Service', status: 'Online', color: '#22c55e', icon: 'wallet' },
-];
+import { adminService } from '../../services/api';
 
 export default function GlobalSettingsScreen({ navigation }) {
     const t = useThemeColors();
-    const [maintenance, setMaintenance] = useState(false);
+    const [settings, setSettings] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState(false);
+    const [markupValue, setMarkupValue] = useState('0');
 
-    const handleMaintenanceToggle = () => {
-        const msg = maintenance
-            ? 'Switch platform back to LIVE mode? Agents will be able to make bookings.'
-            : 'Enable Maintenance Mode? All agent bookings will be suspended across all platforms.';
+    const fetchSettings = async () => {
+        try {
+            setLoading(true);
+            const res = await adminService.getGlobalSettings();
+            if (res.success) {
+                setSettings(res.data);
+                setMarkupValue(String(res.data.defaultRefundMarkup || 0));
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load global settings' });
+            }
+        } catch (err) {
+            console.error('Failed to fetch settings', err);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Could not connect to settings service' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
+
+    const handleToggleMaintenance = async () => {
+        const nextMode = !settings?.maintenanceMode;
+        const msg = nextMode
+            ? 'Enable Maintenance Mode? All agent bookings will be suspended across all platforms.'
+            : 'Switch platform back to LIVE mode? Agents will be able to make bookings.';
 
         Alert.alert(
-            maintenance ? 'Go LIVE?' : 'Enable Maintenance?',
+            nextMode ? 'Enable Maintenance?' : 'Go LIVE?',
             msg,
             [
                 { text: 'Cancel', style: 'cancel' },
-                { text: maintenance ? 'Go Live' : 'Enable', onPress: () => {
-                    setMaintenance(!maintenance);
-                    Toast.show({ type: 'info', text1: 'Platform Mode', text2: `Platform is now ${!maintenance ? 'LIVE' : 'in MAINTENANCE'}` });
+                { text: nextMode ? 'Enable' : 'Go Live', onPress: async () => {
+                    try {
+                        setUpdating(true);
+                        const res = await adminService.updateGlobalSettings({ maintenanceMode: nextMode });
+                        if (res.success) {
+                            setSettings(res.data);
+                            Toast.show({ type: 'success', text1: 'Success', text2: `Platform mode set to ${nextMode ? 'MAINTENANCE' : 'LIVE'}` });
+                        }
+                    } catch (err) {
+                        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update maintenance mode' });
+                    } finally {
+                        setUpdating(false);
+                    }
                 }},
             ]
         );
     };
 
+    const handleToggleService = async (serviceField, displayName) => {
+        const nextValue = !settings?.[serviceField];
+        try {
+            setUpdating(true);
+            const res = await adminService.updateGlobalSettings({ [serviceField]: nextValue });
+            if (res.success) {
+                setSettings(res.data);
+                Toast.show({ type: 'success', text1: 'Success', text2: `${displayName} has been ${nextValue ? 'enabled' : 'disabled'}` });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: `Failed to update ${displayName}` });
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleSaveMarkup = async () => {
+        const numVal = Number(markupValue);
+        if (isNaN(numVal) || numVal < 0) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter a valid positive number' });
+            return;
+        }
+        try {
+            setUpdating(true);
+            const res = await adminService.updateGlobalSettings({ defaultRefundMarkup: numVal });
+            if (res.success) {
+                setSettings(res.data);
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Refund markup saved successfully' });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save refund markup' });
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     const handleRegenerateKeys = () => {
         Alert.alert('Regenerate API Keys', 'This will invalidate all current API tokens. Are you sure?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Regenerate', style: 'destructive', onPress: () => Toast.show({ type: 'success', text1: 'Regenerated', text2: 'New API keys generated.' }) },
+            { text: 'Regenerate', style: 'destructive', onPress: async () => {
+                try {
+                    setUpdating(true);
+                    const newToken = 'SECURE_' + Math.random().toString(36).substring(2).toUpperCase() + '_' + Date.now();
+                    const res = await adminService.updateGlobalSettings({ 
+                        apiKeys: { ...settings?.apiKeys, 'Master Token': newToken } 
+                    });
+                    if (res.success) {
+                        setSettings(res.data);
+                        Toast.show({ type: 'success', text1: 'Regenerated', text2: 'New Master API Token generated.' });
+                    }
+                } catch (err) {
+                    Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to regenerate tokens' });
+                } finally {
+                    setUpdating(false);
+                }
+            } },
         ]);
     };
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={t.primary} />
+                <Text style={{ color: t.textMuted }} className="mt-5 font-black uppercase text-[10px] tracking-widest">Syncing with Governance Layer...</Text>
+            </View>
+        );
+    }
+
+    const apiStatuses = settings?.apiStatuses || {};
+    const apiKeys = settings?.apiKeys || {};
+    const maintenance = settings?.maintenanceMode || false;
 
     return (
         <View style={{ flex: 1, backgroundColor: t.bg }}>
@@ -60,6 +155,15 @@ export default function GlobalSettingsScreen({ navigation }) {
                     </View>
                 </View>
 
+                {updating && (
+                    <View className="absolute inset-0 bg-white/60 z-50 flex items-center justify-center">
+                        <View className="bg-slate-900 px-6 py-4 rounded-full shadow-2xl flex-row items-center">
+                            <ActivityIndicator size="small" color="#fff" className="mr-3" />
+                            <Text className="text-white font-black text-[10px] uppercase tracking-widest">Applying Changes...</Text>
+                        </View>
+                    </View>
+                )}
+
                 <ScrollView className="flex-1 px-5 pt-2" showsVerticalScrollIndicator={false}>
                     {/* Platform Mode */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
@@ -78,7 +182,7 @@ export default function GlobalSettingsScreen({ navigation }) {
                                     {maintenance ? 'MAINTENANCE MODE' : 'LIVE / ONLINE'}
                                 </Text>
                             </View>
-                            <TouchableOpacity onPress={handleMaintenanceToggle}
+                            <TouchableOpacity onPress={handleToggleMaintenance}
                                 style={{ backgroundColor: maintenance ? '#dc2626' : '#22c55e', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
                                 <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: maintenance ? 24 : 0 }] }} className="shadow-sm" />
                             </TouchableOpacity>
@@ -88,12 +192,75 @@ export default function GlobalSettingsScreen({ navigation }) {
                             Switching to Maintenance Mode will instantly suspend all agent booking capabilities across web and mobile platforms.
                         </Text>
 
-                        <TouchableOpacity onPress={handleMaintenanceToggle}
+                        <TouchableOpacity onPress={handleToggleMaintenance}
                             className={`w-full py-4 rounded-2xl items-center border border-b-4 shadow-md active:scale-95 ${maintenance ? 'bg-emerald-600 border-emerald-600 border-b-emerald-700 shadow-emerald-500/20' : 'bg-slate-900 border-slate-900 border-b-slate-800 shadow-slate-900/20'}`}>
                             <Text className="text-white font-black text-xs uppercase tracking-widest">
-                                {maintenance ? 'Disable Maintenance Mode' : 'Enable Maintenance Mode'}
+                                {maintenance ? 'Restore Live Operations' : 'Enable Maintenance Mode'}
                             </Text>
                         </TouchableOpacity>
+                    </View>
+
+                    {/* Default Refund Markup */}
+                    <View style={{ backgroundColor: t.card, elevation: 8 }}
+                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        <View className="flex-row items-center justify-between mb-1">
+                            <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Refund Markup</Text>
+                            <Ionicons name="cash" size={24} color="#f59e0b" />
+                        </View>
+                        <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6">Default Cancellation markup (₹)</Text>
+
+                        <View className="mb-4">
+                            <TextInput
+                                style={{ fontSize: 20, fontWeight: 'bold', color: t.text }}
+                                value={markupValue}
+                                onChangeText={setMarkupValue}
+                                keyboardType="numeric"
+                                placeholder="Enter markup in ₹"
+                                className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 font-black shadow-inner"
+                            />
+                        </View>
+                        <Text className="text-slate-400 text-xs font-bold leading-5 mb-6">
+                            This deduction will be subtracted automatically from cancellation refunds before crediting the agent wallet.
+                        </Text>
+
+                        <TouchableOpacity onPress={handleSaveMarkup}
+                            className="w-full py-4 rounded-2xl items-center bg-amber-500 border border-amber-500 border-b-amber-600 shadow-amber-500/20 shadow-md active:scale-95">
+                            <Text className="text-white font-black text-xs uppercase tracking-widest">Save Markup</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Service Toggles */}
+                    <View style={{ backgroundColor: t.card, elevation: 8 }}
+                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        <View className="flex-row items-center justify-between mb-1">
+                            <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Service Toggles</Text>
+                            <Ionicons name="toggle" size={24} color="#a855f7" />
+                        </View>
+                        <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6">Enable / Disable Specific Features</Text>
+
+                        {/* OTB Toggle */}
+                        <View className="flex-row justify-between items-center py-4 border-b border-slate-100">
+                            <View className="flex-1 pr-2">
+                                <Text style={{ color: t.text }} className="font-black text-sm tracking-wide">OTB Service</Text>
+                                <Text className="text-[10px] font-bold text-slate-400">Ok To Board requests for agents</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => handleToggleService('otbServiceActive', 'OTB Service')}
+                                style={{ backgroundColor: settings?.otbServiceActive ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.otbServiceActive ? 24 : 0 }] }} className="shadow-sm" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Fixed Departure Toggle */}
+                        <View className="flex-row justify-between items-center py-4">
+                            <View className="flex-1 pr-2">
+                                <Text style={{ color: t.text }} className="font-black text-sm tracking-wide">Fixed Departure</Text>
+                                <Text className="text-[10px] font-bold text-slate-400">Group flight departure search & book</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => handleToggleService('fixedDepartureServiceActive', 'Fixed Departure')}
+                                style={{ backgroundColor: settings?.fixedDepartureServiceActive ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.fixedDepartureServiceActive ? 24 : 0 }] }} className="shadow-sm" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* API Connectivity */}
@@ -105,22 +272,26 @@ export default function GlobalSettingsScreen({ navigation }) {
                         </View>
                         <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6">Service Integration Health</Text>
 
-                        {API_SERVICES.map((s, i) => (
-                            <View key={s.name}
-                                style={{ borderBottomWidth: i !== API_SERVICES.length - 1 ? 1 : 0, borderBottomColor: t.isDark ? '#1e293b' : '#f1f5f9' }}
-                                className="flex-row justify-between items-center py-4 px-2">
-                                <View className="flex-row items-center flex-1 pr-2">
-                                    <View className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 items-center justify-center mr-3 shadow-inner">
-                                        <Ionicons name={s.icon} size={16} color="#0f172a" />
+                        {Object.entries(apiStatuses).map(([name, status], i, arr) => {
+                            const isOnline = status === 'Online';
+                            const statusColor = isOnline ? '#22c55e' : '#f97316';
+                            return (
+                                <View key={name}
+                                    style={{ borderBottomWidth: i !== arr.length - 1 ? 1 : 0, borderBottomColor: t.isDark ? '#1e293b' : '#f1f5f9' }}
+                                    className="flex-row justify-between items-center py-4 px-2">
+                                    <View className="flex-row items-center flex-1 pr-2">
+                                        <View className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 items-center justify-center mr-3 shadow-inner">
+                                            <Ionicons name="globe" size={16} color="#0f172a" />
+                                        </View>
+                                        <Text style={{ color: t.text }} className="font-black text-sm tracking-wide">{name}</Text>
                                     </View>
-                                    <Text style={{ color: t.text }} className="font-black text-sm tracking-wide">{s.name}</Text>
+                                    <View className="flex-row items-center bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
+                                        <View style={{ backgroundColor: statusColor, width: 8, height: 8, borderRadius: 4 }} className="mr-2" />
+                                        <Text style={{ color: statusColor }} className="text-[10px] font-black uppercase tracking-wider">{status}</Text>
+                                    </View>
                                 </View>
-                                <View className="flex-row items-center bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
-                                    <View style={{ backgroundColor: s.color, width: 8, height: 8, borderRadius: 4 }} className="mr-2" />
-                                    <Text style={{ color: s.color }} className="text-[10px] font-black uppercase tracking-wider">{s.status}</Text>
-                                </View>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
 
                     {/* Master API Tokens */}
@@ -134,7 +305,7 @@ export default function GlobalSettingsScreen({ navigation }) {
 
                         <View className="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-100 shadow-inner">
                             <Text className="font-mono text-xs font-black text-[#1D4171] tracking-widest text-center">
-                                XYZ_SECURE_TOKEN_**********************************
+                                {apiKeys['Master Token'] || 'NO_TOKEN_DEFINED'}
                             </Text>
                         </View>
 

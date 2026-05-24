@@ -135,6 +135,14 @@ export const agentService = {
     deleteNotification: async (id) => {
         const response = await api.delete(`/agents/notifications/${id}`);
         return response.data;
+    },
+    deleteTicket: async (id) => {
+        const response = await api.delete(`/agents/tickets/${id}`);
+        return response.data;
+    },
+    getUnreadNotificationsCount: async () => {
+        const response = await api.get('/agents/notifications/unread-count');
+        return response.data;
     }
 };
 
@@ -157,6 +165,10 @@ export const walletService = {
     },
     rechargeWallet: async (paymentDetails) => {
         const response = await api.post('/wallet/recharge', paymentDetails);
+        return response.data;
+    },
+    getStats: async () => {
+        const response = await api.get('/wallet/stats');
         return response.data;
     }
 };
@@ -278,6 +290,30 @@ export const bookingService = {
         const response = await api.get('/booking/airports/search', { params: { query } });
         return response.data;
     },
+    getPopularAirports: async () => {
+        const response = await api.get('/booking/airports/popular');
+        return response.data;
+    },
+    ftdGetValidationFlags: async (flightID, refID) => {
+        const response = await api.post('/booking/flights/validation-flags', { flightID, refID });
+        return response.data;
+    },
+    ftdGetTokenStatus: async () => {
+        const response = await api.get('/booking/flights/token-status');
+        return response.data;
+    },
+    acceptRescheduleQuote: async (rescheduleId) => {
+        const response = await api.post('/booking/flights/accept-reschedule-quote', { rescheduleId });
+        return response.data;
+    },
+    searchGeneric: async (type, params) => {
+        const response = await api.get(`/booking/${type}s/search`, { params });
+        return response.data;
+    },
+    bookGeneric: async (type, itemId, passengerDetails) => {
+        const response = await api.post(`/booking/${type}s/book`, { itemId, passengerDetails });
+        return response.data;
+    },
     getAgentHistory: async (params = {}) => {
         const response = await api.get('/bookings/history/agent', { params });
         return response.data;
@@ -293,16 +329,46 @@ export const adminService = {
         const response = await api.get('/admin/stats');
         return response.data;
     },
+    getAnalytics: async (params) => {
+        const response = await api.get('/admin/analytics', { params });
+        return response.data;
+    },
+    getGlobalSettings: async () => {
+        const response = await api.get('/admin/settings');
+        return response.data;
+    },
+    updateGlobalSettings: async (settings) => {
+        const response = await api.put('/admin/settings', settings);
+        return response.data;
+    },
     getAgents: async (page = 1, limit = 50, search = '') => {
         const response = await api.get('/admin/agents', { params: { page, limit, search } });
         return response.data;
     },
     updateAgent: async (agentId, agentData) => {
-        const response = await api.put(`/admin/agents/${agentId}`, agentData);
+        const response = await api.put(`/admin/agents/${agentId}`, agentData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    createAgent: async (agentData) => {
+        const response = await api.post('/admin/agents', agentData);
+        return response.data;
+    },
+    deleteAgent: async (agentId) => {
+        const response = await api.delete(`/admin/agents/${agentId}`);
         return response.data;
     },
     toggleBlockAgent: async (agentId) => {
         const response = await api.patch(`/admin/agents/${agentId}/toggle-block`);
+        return response.data;
+    },
+    updateKyc: async (agentId, data) => {
+        const response = await api.put(`/admin/agents/${agentId}/approve`, data);
+        return response.data;
+    },
+    searchAgentByCode: async (agentCode) => {
+        const response = await api.get('/admin/agents', { params: { search: agentCode, limit: 50 } });
         return response.data;
     },
     // --- MARKUP ENGINE ---
@@ -346,6 +412,63 @@ export const adminService = {
     },
     deleteCoupon: async (id) => {
         const response = await api.delete(`/admin/coupons/${id}`);
+        return response.data;
+    },
+    updateCoupon: async (id, data) => {
+        const response = await api.put(`/admin/coupons/${id}`, data);
+        return response.data;
+    },
+    // --- COMMISSIONS ---
+    getCommissions: async () => {
+        const response = await api.get('/admin/commissions');
+        return response.data;
+    },
+    updateCommission: async (data) => {
+        const response = await api.post('/admin/commissions', data);
+        return response.data;
+    },
+    // --- PROMOTIONS ---
+    getPromotions: async () => {
+        const response = await api.get('/admin/promotions');
+        return response.data;
+    },
+    createPromotion: async (promotionData) => {
+        const response = await api.post('/admin/promotions', promotionData);
+        return response.data;
+    },
+    updatePromotion: async (id, promotionData) => {
+        const response = await api.put(`/admin/promotions/${id}`, promotionData);
+        return response.data;
+    },
+    deletePromotion: async (id) => {
+        const response = await api.delete(`/admin/promotions/${id}`);
+        return response.data;
+    },
+    // --- SUB-AGENTS ---
+    getSubAgents: async () => {
+        const response = await api.get('/admin/sub-agents');
+        return response.data;
+    },
+    getSubAgentStats: async () => {
+        const response = await api.get('/admin/sub-agents/stats');
+        return response.data;
+    },
+    // --- TICKETS (Admin - alias) ---
+    getTickets: async () => {
+        const response = await api.get('/admin/tickets');
+        return response.data;
+    },
+    replyTicket: async (id, message, status) => {
+        const response = await api.post(`/admin/tickets/${id}/reply`, { message, status });
+        return response.data;
+    },
+    // --- SETTINGS (alias) ---
+    getSettings: async () => {
+        const response = await api.get('/admin/settings');
+        return response.data;
+    },
+    updateSettings: async (settingsData) => {
+        const response = await api.put('/admin/settings', settingsData);
         return response.data;
     },
     // --- OTB & BOOKINGS ---
@@ -478,6 +601,13 @@ export const adminService = {
     },
     verifyFixedDepartureBookingPayment: async (id) => {
         const response = await api.put(`/admin/fixed-departures/bookings/${id}/verify-payment`);
+        return response.data;
+    }
+};
+
+export const publicService = {
+    getPromotions: async () => {
+        const response = await api.get('/marketing/promotions');
         return response.data;
     }
 };

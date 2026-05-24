@@ -74,6 +74,9 @@ export default function AdminDashboardScreen({ navigation }) {
         { title: 'Support', icon: 'headset', route: 'AdminTickets', color: '#14b8a6' },
         { title: 'Comms', icon: 'calculator', route: 'CommissionSetup', color: '#6366f1' },
         { title: 'Promos', icon: 'megaphone', route: 'PromotionManager', color: '#f43f5e' },
+        { title: 'Offers', icon: 'pricetag', route: 'OfferManager', color: '#a855f7' },
+        { title: 'Sub-Agents', icon: 'git-branch', route: 'SubAgentManager', color: '#0ea5e9' },
+        { title: 'Taxes', icon: 'receipt', route: 'TaxConfig', color: '#059669' },
         { title: 'Settings', icon: 'settings', route: 'GlobalSettings', color: '#64748b' },
     ];
 

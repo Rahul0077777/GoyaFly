@@ -28,15 +28,19 @@ export default function WalletScreen({ navigation }) {
     const loadWalletData = async () => {
         try {
             const balRes = await walletService.getBalance();
-            if (balRes?.success) setBalance(balRes.data?.balance || 0);
+            if (balRes?.success) setBalance(balRes.balance || 0);
             
+            const statsRes = await walletService.getStats();
+            if (statsRes?.success) {
+                setStats(statsRes.data || { totalSpent: 0, totalCredits: 0, avgBooking: 0, maxRecharge: 0 });
+            }
+
             const histRes = await walletService.getHistory();
             if (histRes?.success) {
-                const txns = histRes.data?.transactions || [];
+                // In mobile api.js, histRes.data is expected to contain either list or structure
+                // Let's handle both array and object formats safely
+                const txns = Array.isArray(histRes.data) ? histRes.data : (histRes.data?.transactions || []);
                 setHistory(txns);
-                const spent = txns.filter(t => t.type === 'debit' || t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
-                const credits = txns.filter(t => t.type === 'credit' || t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
-                setStats({ totalSpent: spent || 0, totalCredits: credits || 0 });
             }
         } catch (error) {
             console.error("Wallet Load Error", error);
@@ -194,7 +198,7 @@ export default function WalletScreen({ navigation }) {
                                 </View>
                             ) : (
                                 history.map((txn, i) => {
-                                    const isCredit = txn.type === 'credit' || txn.amount > 0;
+                                    const isCredit = txn.transactionType === 'CREDIT' || txn.type === 'credit';
                                     return (
                                         <View key={txn._id || i} className={`py-4 flex-row items-center justify-between ${i !== history.length - 1 ? 'border-b border-slate-50' : ''}`}>
                                             <View className="flex-row items-center flex-1">

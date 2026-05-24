@@ -20,6 +20,7 @@ import HolidayManagerScreen from '../screens/admin/HolidayManagerScreen';
 import VisaManagerScreen from '../screens/admin/VisaManagerScreen';
 import FixedDepartureManagerScreen from '../screens/admin/FixedDepartureManagerScreen';
 import FixedDepartureBookingManagerScreen from '../screens/admin/FixedDepartureBookingManagerScreen';
+import TaxConfigScreen from '../screens/admin/TaxConfigScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,6 +47,7 @@ export default function AdminStack() {
             <Stack.Screen name="AdminTicketConversation" component={AdminTicketConversationScreen} />
             <Stack.Screen name="FixedDepartureManager" component={FixedDepartureManagerScreen} />
             <Stack.Screen name="FixedDepartureBookingManager" component={FixedDepartureBookingManagerScreen} />
+            <Stack.Screen name="TaxConfig" component={TaxConfigScreen} />
         </Stack.Navigator>
     );
 }

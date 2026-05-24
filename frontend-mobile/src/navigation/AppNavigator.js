@@ -35,6 +35,10 @@ import ServiceCheckoutScreen from '../screens/agent/ServiceCheckoutScreen';
 import FixedDepartureSearchScreen from '../screens/agent/FixedDepartureSearchScreen';
 import FixedDepartureBookingScreen from '../screens/agent/FixedDepartureBookingScreen';
 import FixedDepartureHistoryScreen from '../screens/agent/FixedDepartureHistoryScreen';
+import KycStatusScreen from '../screens/agent/KycStatusScreen';
+import AIChatScreen from '../screens/agent/AIChatScreen';
+import HolidaysScreen from '../screens/agent/HolidaysScreen';
+import MyRefundsScreen from '../screens/agent/MyRefundsScreen';
 
 import { navigationRef } from '../services/navigationService';
 
@@ -76,6 +80,10 @@ export default function AppNavigator() {
                 <Stack.Screen name="FixedDepartureSearch" component={FixedDepartureSearchScreen} />
                 <Stack.Screen name="FixedDepartureBooking" component={FixedDepartureBookingScreen} />
                 <Stack.Screen name="FixedDepartureHistory" component={FixedDepartureHistoryScreen} />
+                <Stack.Screen name="KycStatus" component={KycStatusScreen} />
+                <Stack.Screen name="AIChat" component={AIChatScreen} />
+                <Stack.Screen name="Holidays" component={HolidaysScreen} />
+                <Stack.Screen name="MyRefunds" component={MyRefundsScreen} />
                 <Stack.Screen name="About" component={AboutScreen} />
                 <Stack.Screen name="ContactSupport" component={ContactSupportScreen} />
             </Stack.Navigator>

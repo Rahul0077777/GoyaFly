@@ -86,9 +86,9 @@ const Wallet = () => {
     return (
         <div className="w-full max-w-md md:max-w-4xl mx-auto py-6 px-4 md:px-6 space-y-6 pb-20">
             {/* Header */}
-            <div className="flex justify-between items-center bg-[#f7f9fc] rounded-3xl p-6 shadow-sm border border-slate-100">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 md:w-14 md:h-14 bg-orange-500 rounded-2xl flex items-center justify-center text-xl md:text-2xl shadow-lg shadow-orange-500/30 text-white shrink-0">
+            <div className="flex justify-between items-center bg-[#f7f9fc] rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-orange-500 rounded-2xl flex items-center justify-center text-lg sm:text-xl md:text-2xl shadow-lg shadow-orange-500/30 text-white shrink-0">
                         <FaWallet />
                     </div>
                     <div>
@@ -122,25 +122,25 @@ const Wallet = () => {
                 
                 <button 
                     onClick={() => setRechargeOpen(true)}
-                    className="w-full bg-white text-[#1D4171] font-black py-4 rounded-xl text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 relative z-10 shadow-lg shadow-black/10 active:scale-95"
+                    className="w-full bg-white text-[#1D4171] font-black py-3 sm:py-4 rounded-xl text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 relative z-10 shadow-lg shadow-black/10 active:scale-95"
                 >
                     ADD MONEY <span className="text-lg leading-none border border-[#1D4171] rounded-full w-5 h-5 flex items-center justify-center pb-0.5 ml-1">+</span>
                 </button>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Total Spent */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-5">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-4 sm:gap-5">
                     <div className="absolute bottom-0 left-0 w-full h-12 text-red-50 pointer-events-none">
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0 100 C 30 50, 70 80, 100 30 L 100 100 L 0 100 Z" fill="currentColor"/>
                         </svg>
                     </div>
-                    <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-2xl shrink-0 z-10">📉</div>
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 z-10">📉</div>
                     <div className="z-10">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Spent</p>
-                        <p className="text-2xl font-black text-slate-800 tracking-tight">₹{stats ? (stats.totalSpent || 0).toLocaleString('en-IN') : '...'}</p>
+                        <p className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">₹{stats ? (stats.totalSpent || 0).toLocaleString('en-IN') : '...'}</p>
                         <div className="bg-red-50 text-red-500 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1.5 w-max">
                             ↑ {Math.abs(stats?.spentGrowth || 0)}% this month
                         </div>
@@ -148,16 +148,16 @@ const Wallet = () => {
                 </div>
 
                 {/* Total Credits */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-5">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-4 sm:gap-5">
                     <div className="absolute bottom-0 left-0 w-full h-12 text-emerald-50 pointer-events-none">
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0 100 C 40 40, 60 90, 100 20 L 100 100 L 0 100 Z" fill="currentColor"/>
                         </svg>
                     </div>
-                    <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-2xl shrink-0 z-10">📈</div>
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 z-10">📈</div>
                     <div className="z-10">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Credits</p>
-                        <p className="text-2xl font-black text-slate-800 tracking-tight">₹{stats ? (stats.totalCredits || 0).toLocaleString('en-IN') : '...'}</p>
+                        <p className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">₹{stats ? (stats.totalCredits || 0).toLocaleString('en-IN') : '...'}</p>
                         <div className="bg-emerald-50 text-emerald-500 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1.5 w-max">
                             ↑ {Math.abs(stats?.creditGrowth || 0)}% this month
                         </div>
@@ -165,55 +165,55 @@ const Wallet = () => {
                 </div>
 
                 {/* Avg Booking */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-5">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-4 sm:gap-5">
                     <div className="absolute bottom-0 left-0 w-full h-12 text-blue-50 pointer-events-none">
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0 100 C 20 60, 50 20, 100 80 L 100 100 L 0 100 Z" fill="currentColor"/>
                         </svg>
                     </div>
-                    <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-2xl shrink-0 z-10">📅</div>
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 z-10">📅</div>
                     <div className="z-10">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Avg Booking Value</p>
-                        <p className="text-2xl font-black text-[#1D4171] tracking-tight">₹{stats ? (stats.avgBooking || 0).toLocaleString('en-IN') : '...'}</p>
+                        <p className="text-xl sm:text-2xl font-black text-[#1D4171] tracking-tight">₹{stats ? (stats.avgBooking || 0).toLocaleString('en-IN') : '...'}</p>
                         <p className="text-[9px] font-bold text-slate-400 mt-1.5">Based on global history</p>
                     </div>
                 </div>
 
                 {/* Max Recharge */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-5">
+                <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 relative overflow-hidden flex items-center gap-4 sm:gap-5">
                     <div className="absolute bottom-0 left-0 w-full h-12 text-orange-50 pointer-events-none">
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0 100 C 30 70, 70 30, 100 60 L 100 100 L 0 100 Z" fill="currentColor"/>
                         </svg>
                     </div>
-                    <div className="w-14 h-14 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-2xl shrink-0 z-10">⚡</div>
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shrink-0 z-10">⚡</div>
                     <div className="z-10">
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Max Recharge</p>
-                        <p className="text-2xl font-black text-orange-500 tracking-tight">₹{stats ? (stats.maxRecharge || 0).toLocaleString('en-IN') : '...'}</p>
+                        <p className="text-xl sm:text-2xl font-black text-orange-500 tracking-tight">₹{stats ? (stats.maxRecharge || 0).toLocaleString('en-IN') : '...'}</p>
                         <p className="text-[9px] font-bold text-slate-400 mt-1.5">Lifetime maximum recharge</p>
                     </div>
                 </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Quick Actions</p>
-                <div className="grid grid-cols-4 gap-2 md:gap-4 text-center">
-                    <div onClick={() => setRechargeOpen(true)} className="flex flex-col items-center gap-3 cursor-pointer group">
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center text-lg md:text-xl group-hover:bg-blue-500 group-hover:text-white transition-all"><FaWallet /></div>
-                        <span className="text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Add<br/>Money</span>
+            <div className="bg-white rounded-3xl p-5 md:p-8 shadow-sm border border-slate-100">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 sm:mb-6">Quick Actions</p>
+                <div className="grid grid-cols-4 gap-2 sm:gap-4 text-center">
+                    <div onClick={() => setRechargeOpen(true)} className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-blue-50 text-blue-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl group-hover:bg-blue-500 group-hover:text-white transition-all"><FaWallet /></div>
+                        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Add<br/>Money</span>
                     </div>
-                    <div onClick={() => document.getElementById('transaction-history')?.scrollIntoView({behavior: 'smooth'})} className="flex flex-col items-center gap-3 cursor-pointer group">
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center text-lg md:text-xl group-hover:bg-purple-500 group-hover:text-white transition-all"><FaHistory /></div>
-                        <span className="text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Transaction<br/>History</span>
+                    <div onClick={() => document.getElementById('transaction-history')?.scrollIntoView({behavior: 'smooth'})} className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-purple-50 text-purple-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl group-hover:bg-purple-500 group-hover:text-white transition-all"><FaHistory /></div>
+                        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Transaction<br/>History</span>
                     </div>
-                    <div className="flex flex-col items-center gap-3 cursor-pointer group" onClick={() => toast.info('My Cards coming soon!')}>
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-lg md:text-xl group-hover:bg-emerald-500 group-hover:text-white transition-all"><FaRegCreditCard /></div>
-                        <span className="text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">My<br/>Cards</span>
+                    <div className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group" onClick={() => toast.info('My Cards coming soon!')}>
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-emerald-50 text-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl group-hover:bg-emerald-500 group-hover:text-white transition-all"><FaRegCreditCard /></div>
+                        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">My<br/>Cards</span>
                     </div>
-                    <div className="flex flex-col items-center gap-3 cursor-pointer group" onClick={() => toast.info('Connecting to support...')}>
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-lg md:text-xl group-hover:bg-orange-500 group-hover:text-white transition-all"><FaHeadset /></div>
-                        <span className="text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Help &<br/>Support</span>
+                    <div className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group" onClick={() => toast.info('Connecting to support...')}>
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-orange-50 text-orange-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl group-hover:bg-orange-500 group-hover:text-white transition-all"><FaHeadset /></div>
+                        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Help &<br/>Support</span>
                     </div>
                 </div>
             </div>
