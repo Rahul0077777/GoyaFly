@@ -480,6 +480,14 @@ export const adminService = {
         const response = await api.put(`/admin/otb/requests/${requestId}`, data);
         return response.data;
     },
+    getOtbAgentRequests: async () => {
+        const response = await api.get('/admin/otb/agent-requests');
+        return response.data;
+    },
+    approveOtbAgentAccess: async (agentId, data) => {
+        const response = await api.put(`/admin/otb/agents/${agentId}/otb-access`, data);
+        return response.data;
+    },
     getBookings: async (page = 1, limit = 50, status = '', agentId = '', serviceType = '') => {
         const response = await api.get('/admin/bookings/history/all', { params: { page, limit, status, agentId, serviceType } });
         return response.data;
@@ -621,6 +629,23 @@ export const otbService = {
     },
     getAgentStatus: async () => {
         const response = await api.get('/otb/agent-status');
+        return response.data;
+    },
+    initiateSubscription: async () => {
+        const response = await api.post('/otb/subscription/initiate');
+        return response.data;
+    },
+    verifySubscription: async (data) => {
+        const response = await api.post('/otb/subscription/verify', data);
+        return response.data;
+    },
+    verifyPayment: async (paymentData) => {
+        const response = await api.post('/otb/verify-payment', paymentData);
+        return response.data;
+    },
+    getStatus: async (receiptNumber, contactNo = '') => {
+        const url = `/otb/status/${receiptNumber}${contactNo ? `/${contactNo}` : ''}`;
+        const response = await api.get(url);
         return response.data;
     }
 };

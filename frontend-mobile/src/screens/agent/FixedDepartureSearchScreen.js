@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Calendar } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useThemeColors } from '../../utils/themeColors';
 import { fixedDepartureService } from '../../services/api';
 
