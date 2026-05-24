@@ -111,7 +111,14 @@ const FixedDepartureHistory = () => {
 
                             {/* PNR & Details */}
                             <div className="w-full lg:w-auto lg:min-w-[150px] lg:border-l lg:border-slate-100 lg:pl-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                                {booking.pnr ? (
+                                {booking.status === 'Cancelled' ? (
+                                    <div className="flex flex-col items-center justify-center p-3 bg-red-50 rounded-xl border border-dashed border-red-200 gap-1">
+                                        <p className="text-[10px] font-black text-red-600 uppercase text-center leading-tight">Booking Cancelled & Refunded</p>
+                                        {booking.remarks && (
+                                            <p className="text-[9px] font-bold text-red-500 text-center mt-1">Reason: {booking.remarks}</p>
+                                        )}
+                                    </div>
+                                ) : booking.pnr ? (
                                     <div className="space-y-3">
                                         <div>
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Confirmation PNR</p>
@@ -123,8 +130,13 @@ const FixedDepartureHistory = () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase text-center leading-relaxed">PNR will be generated once admin processes the request.</p>
+                                    <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 gap-1.5">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase text-center leading-relaxed">
+                                            We are processing your request. Kindly wait 15 to 45 mins.
+                                        </p>
+                                        <p className="text-[9px] font-black text-[#F07E21] uppercase text-center leading-relaxed">
+                                            Don't book another ticket. Wait for admin confirmation.
+                                        </p>
                                     </div>
                                 )}
                             </div>

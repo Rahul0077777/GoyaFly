@@ -672,12 +672,37 @@ const processManualRefund = async (req, res, next) => {
         // Notify Agent (Optional but good UX)
         try {
             const Notification = require('../Models/Notification.model');
+            const { sendEmail } = require('../utils/notifier');
             await Notification.create({
                 agentId: agent._id,
                 title: 'Refund Processed',
                 message: `A refund of ₹${finalRefund} for cancelled booking (PNR: ${booking.pnr}) has been credited to your wallet.`,
                 category: 'WALLET'
             });
+
+            if (agent.emailAddress || agent.email) {
+                const agentEmail = agent.emailAddress || agent.email;
+                const subject = `Refund Processed Successfully [PNR: ${booking.pnr}]`;
+                const body = `
+                    <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; padding: 30px;">
+                        <div style="background-color: #e6f4ea; padding: 20px; text-align: center; border-radius: 12px; margin-bottom: 20px;">
+                            <h2 style="color: #137333; margin: 0;">Refund Processed</h2>
+                        </div>
+                        <p>Dear ${agent.agentName || agent.name},</p>
+                        <p>We are pleased to inform you that the refund for your cancelled booking (PNR: <b>${booking.pnr}</b>) has been successfully processed.</p>
+                        <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #137333;">
+                            <p style="margin: 5px 0;"><strong>Airline Refund:</strong> ₹${airlineRefundAmount}</p>
+                            <p style="margin: 5px 0;"><strong>Admin Deduction:</strong> ₹${adminDeduction}</p>
+                            <p style="margin: 10px 0 5px 0; font-size: 18px; color: #137333;"><strong>Net Credit to Wallet:</strong> ₹${finalRefund}</p>
+                        </div>
+                        <p style="margin-top: 20px;">The amount has been successfully credited to your GoyaFly agent wallet.</p>
+                        <br/>
+                        <p style="margin: 0; color: #333; font-weight: bold;">Regards,</p>
+                        <p style="margin: 0; color: #333;">GoyaFly Support Team</p>
+                    </div>
+                `;
+                await sendEmail(agentEmail, subject, body);
+            }
         } catch (err) {
             console.error('Failed to send refund notification:', err);
         }

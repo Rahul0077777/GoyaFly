@@ -44,7 +44,25 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
     const [selectedLabel, setSelectedLabel] = useState(codeValue);
 
     useEffect(() => {
-        if (!search || search.length < 2) { setAirports(POPULAR_AIRPORTS); return; }
+        if (!search) { setAirports(POPULAR_AIRPORTS); return; }
+        
+        // Local filtering
+        const localMatch = POPULAR_AIRPORTS.filter(a => 
+            a.code.toLowerCase().includes(search.toLowerCase()) || 
+            a.city.toLowerCase().includes(search.toLowerCase()) ||
+            a.label.toLowerCase().includes(search.toLowerCase())
+        );
+
+        if (localMatch.length > 0) {
+            setAirports(localMatch);
+        } else if (search.length < 2) {
+            setAirports(POPULAR_AIRPORTS);
+        } else {
+            setAirports([]);
+        }
+
+        if (search.length < 2) return;
+
         const t = setTimeout(async () => {
             setLoading(true);
             try {
@@ -60,7 +78,7 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
         if (codeValue) {
             const found = airports.find(a => a.code === codeValue);
             if (found) {
-                setSelectedLabel(found.city);
+                setSelectedLabel(`${found.code} - ${found.city}`);
             } else {
                 bookingService.searchAirports(codeValue).then(res => {
                     if (res.success && res.data) {
@@ -70,7 +88,7 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
                                 if (prev.some(x => x.code === resolved.code)) return prev;
                                 return [...prev, resolved];
                             });
-                            setSelectedLabel(resolved.city);
+                            setSelectedLabel(`${resolved.code} - ${resolved.city}`);
                         } else {
                             setSelectedLabel(codeValue);
                         }
@@ -103,7 +121,7 @@ const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
                     {!loading && airports.map(a => (
                         <div key={a.code}
                             className="px-4 py-3 hover:bg-[#FFF4EC] border-b border-[#F4F4F4] cursor-pointer flex justify-between items-center"
-                            onClick={() => { onChangeCode(a.code); setSelectedLabel(a.city); setOpen(false); }}>
+                            onClick={() => { onChangeCode(a.code); setSelectedLabel(`${a.code} - ${a.city}`); setOpen(false); }}>
                             <div>
                                 <p className="text-sm font-bold text-[#222]">{a.city}</p>
                                 <p className="text-[10px] text-[#999]">{a.label}{a.country ? ` • ${a.country}` : ''}</p>
@@ -284,7 +302,7 @@ const FlightSearch = () => {
             if (verifyRes.success) {
                 const { currentNetfare } = verifyRes.data;
                 const finalBaseFare = showNetPrice ? (currentNetfare + (Number(markupAmount) || 0)) : currentNetfare;
-                navigate('/agent/checkout', { state: { bookingData: { service: 'Flight', from, to, baseFare: finalBaseFare, passengers, details: { ...flight, ...selectedFareOption, flightID, date, appliedMarkup: Number(markupAmount) } } } });
+                navigate('/agent/checkout', { state: { bookingData: { service: 'Flight', from, to, baseFare: finalBaseFare, passengers, details: { ...flight, ...selectedFareOption, flightID, date, appliedMarkup: Number(markupAmount), ssrInfo: verifyRes.data.ssrInfo } } } });
             } else { toast.error(`Verification failed: ${verifyRes.message}`); }
         } catch (err) { toast.error(err.message || 'Error verifying price.'); }
         finally { setVerifyingPrice(false); }

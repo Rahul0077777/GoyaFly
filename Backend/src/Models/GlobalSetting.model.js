@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const globalSettingSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
+    otbServiceActive: { type: Boolean, default: true },
+    fixedDepartureServiceActive: { type: Boolean, default: true },
     platformName: { type: String, default: 'GoyaFly' },
     contactEmail: { type: String, default: 'support@goyafly.com' },
     supportNumber: { type: String, default: '+91 9876543210' },
@@ -10,9 +12,7 @@ const globalSettingSchema = new mongoose.Schema({
         type: Map,
         of: String,
         default: {
-            'Sabre GDS': 'Online',
-            'Amadeus': 'Online',
-            'BusIndia API': 'Online',
+            'FTD Travel API': 'Online',
             'Wallet Service': 'Online'
         }
     },

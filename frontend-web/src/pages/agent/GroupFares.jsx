@@ -161,14 +161,14 @@ const GroupFares = () => {
                         <div className="space-y-2">
                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Departure Date</label>
                             <input 
-                                type="date" name="departureDate" value={form.departureDate} onChange={handleChange} required
+                                type="date" name="departureDate" value={form.departureDate} onChange={handleChange} min={new Date().toLocaleDateString('en-CA')} required
                                 className="w-full bg-white border border-gray-300 rounded-xl p-4 font-bold text-sm text-gray-800 focus:border-primary-500 outline-none transition-colors" 
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Return Date</label>
                             <input 
-                                type="date" name="returnDate" value={form.returnDate} onChange={handleChange}
+                                type="date" name="returnDate" value={form.returnDate} onChange={handleChange} min={form.departureDate || new Date().toLocaleDateString('en-CA')}
                                 className="w-full bg-white border border-gray-300 rounded-xl p-4 font-bold text-sm text-gray-800 focus:border-primary-500 outline-none transition-colors" 
                             />
                         </div>

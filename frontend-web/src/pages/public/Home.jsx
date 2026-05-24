@@ -132,7 +132,7 @@ const Home = () => {
                                         </div>
                                         <div className="lg:col-span-3 text-left group">
                                             <label className="block text-[10px] font-black text-black mb-3 uppercase tracking-widest italic ml-1">📅 Travel Date</label>
-                                            <input type="date" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#1D4171] focus:bg-white smooth-transition font-bold text-sm text-black outline-none" />
+                                            <input type="date" min={new Date().toLocaleDateString('en-CA')} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#1D4171] focus:bg-white smooth-transition font-bold text-sm text-black outline-none" />
                                         </div>
                                         <div className="lg:col-span-2">
                                             <button 

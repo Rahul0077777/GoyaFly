@@ -11,12 +11,15 @@ const fixedDepartureBookingSchema = new mongoose.Schema({
         ref: 'FixedDeparture', 
         required: true 
     },
+    adults: { type: Number, default: 1 },
+    children: { type: Number, default: 0 },
+    infants: { type: Number, default: 0 },
     passengers: [{
         name: { type: String, required: true },
         firstName: { type: String, required: true },
         lastName: { type: String, required: true },
-        dob: { type: String, required: true },
-        age: { type: Number, required: true },
+        passengerType: { type: String, enum: ['Adult', 'Child', 'Infant'], required: true },
+        dob: { type: String, default: null },
         gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
         mobileNumber: { type: String, required: true },
         email: { type: String, required: true },
@@ -35,7 +38,8 @@ const fixedDepartureBookingSchema = new mongoose.Schema({
     bookingDate: { type: Date, default: Date.now },
     pdfUrl: { type: String, default: null },
     paymentVerified: { type: Boolean, default: false },
-    isInternational: { type: Boolean, default: false }
+    isInternational: { type: Boolean, default: false },
+    remarks: { type: String, default: null }
 }, { 
     timestamps: true 
 });

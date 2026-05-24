@@ -78,7 +78,7 @@ const Navbar = () => {
       <nav className={`sticky top-0 z-50 w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex justify-between items-center border-b backdrop-blur-2xl smooth-transition touch-target ${
         isHome ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white border-primary-500 shadow-lg' : 'bg-white/80 dark:bg-slate-900/80 text-gray-900 dark:text-white border-gray-100 dark:border-slate-800 shadow-sm'
       }`}>
-      <Link to="/" className="flex items-center group flex-shrink-0">
+      <Link to={isAgent ? "/agent/flight-search" : "/"} className="flex items-center group flex-shrink-0">
         <div className="bg-white rounded-2xl px-3 py-1.5 shadow-md group-hover:shadow-lg group-hover:scale-105 smooth-transition border border-white/60">
           <img
             src={goyaflyLogo}

@@ -9,6 +9,8 @@ const fixedDepartureSchema = new mongoose.Schema({
     departureTime: { type: String, required: true },
     arrivalTime: { type: String, required: true },
     fare: { type: Number, required: true },
+    childFare: { type: Number, default: 0 },
+    infantFare: { type: Number, default: 0 },
     totalSeats: { type: Number, required: true },
     availableSeats: { type: Number, required: true },
     status: { 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
 import { toast } from 'react-toastify';
-import { FaTicketAlt, FaCheck, FaTimes, FaSearch, FaUser, FaPlane, FaIdCard } from 'react-icons/fa';
+import { FaTicketAlt, FaCheck, FaTimes, FaSearch, FaUser, FaPlane, FaIdCard, FaUndo } from 'react-icons/fa';
 
 const FixedDepartureBookingManager = () => {
     const [bookings, setBookings] = useState([]);
@@ -11,6 +11,11 @@ const FixedDepartureBookingManager = () => {
     const [pnr, setPnr] = useState('');
     const [ticketNumber, setTicketNumber] = useState('');
     const [filter, setFilter] = useState('');
+
+    // Cancel Modal States
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [selectedCancelBooking, setSelectedCancelBooking] = useState(null);
+    const [cancelRemarks, setCancelRemarks] = useState('');
 
     useEffect(() => {
         fetchBookings();
@@ -50,15 +55,21 @@ const FixedDepartureBookingManager = () => {
         }
     };
 
-    const handleCancel = async (id) => {
-        if (window.confirm('Are you sure you want to cancel this booking and refund the agent?')) {
-            try {
-                await adminService.cancelFixedDepartureBooking(id);
-                toast.success('Booking cancelled and agent refunded');
-                fetchBookings();
-            } catch (error) {
-                toast.error('Cancellation failed');
-            }
+    const handleCancelClick = (booking) => {
+        setSelectedCancelBooking(booking);
+        setCancelRemarks('');
+        setIsCancelModalOpen(true);
+    };
+
+    const submitCancel = async () => {
+        if (!selectedCancelBooking) return;
+        try {
+            await adminService.cancelFixedDepartureBooking(selectedCancelBooking._id, cancelRemarks);
+            toast.success('Booking cancelled and agent refunded');
+            setIsCancelModalOpen(false);
+            fetchBookings();
+        } catch (error) {
+            toast.error('Cancellation failed');
         }
     };
 
@@ -205,11 +216,11 @@ const FixedDepartureBookingManager = () => {
                                                         </button>
                                                     )}
                                                     <button 
-                                                        onClick={() => handleCancel(booking._id)}
-                                                        className="bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-100 transition-all shadow-sm touch-target"
-                                                        title="Reject & Refund"
+                                                        onClick={() => handleCancelClick(booking)}
+                                                        className="bg-red-50 text-red-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-all flex items-center gap-1 shadow-sm touch-target"
+                                                        title="Cancel Booking & Refund Instantly"
                                                     >
-                                                        <FaTimes /> Reject
+                                                        <FaUndo /> Refund
                                                     </button>
                                                 </>
                                             )}
@@ -280,6 +291,46 @@ const FixedDepartureBookingManager = () => {
                                 className="w-full bg-[#1D4171] text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-[#153156] transition-all flex items-center justify-center gap-2"
                             >
                                 <FaCheck /> Confirm & Issue Ticket
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Cancel & Refund Modal */}
+            {isCancelModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="bg-red-500 p-6 flex justify-between items-center text-white">
+                            <h2 className="text-xl font-black flex items-center gap-2"><FaUndo /> Refund & Cancel</h2>
+                            <button onClick={() => setIsCancelModalOpen(false)} className="text-2xl">&times;</button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="bg-red-50 p-4 rounded-2xl flex items-center gap-4 border border-red-100">
+                                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-2xl text-red-500">
+                                    ⚠️
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Confirm Refund For</p>
+                                    <p className="font-black text-red-700">{selectedCancelBooking?.flightId?.flightNumber} | {selectedCancelBooking?.flightId?.fromCity} → {selectedCancelBooking?.flightId?.toCity}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason / Remarks (Optional)</label>
+                                <textarea 
+                                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-sm focus:ring-2 ring-red-400 outline-none resize-none h-24"
+                                    placeholder="E.g., Flight fully booked, Price changed..."
+                                    value={cancelRemarks}
+                                    onChange={e => setCancelRemarks(e.target.value)}
+                                ></textarea>
+                                <p className="text-[10px] font-bold text-slate-400">This message will be shown to the agent in their dashboard.</p>
+                            </div>
+
+                            <button 
+                                onClick={submitCancel}
+                                className="w-full bg-red-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-red-600 transition-all flex items-center justify-center gap-2"
+                            >
+                                <FaUndo /> Confirm Refund
                             </button>
                         </div>
                     </div>

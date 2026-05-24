@@ -3,17 +3,21 @@ const nodemailer = require('nodemailer');
 // @desc    Send automated emails (e.g., Welcome emails, Ticket confirmations)
 const sendEmail = async (toEmail, subject, htmlBody, attachments = []) => {
     try {
-        // Configure your mail server (Using Gmail as a standard example)
+        // Configure your custom SMTP server (e.g., support@goyafly.com)
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+            port: process.env.SMTP_PORT || 465,
+            secure: process.env.SMTP_SECURE !== 'false', // true for 465, false for other ports
             auth: {
-                user: process.env.EMAIL_USER, // e.g., 'your.email@gmail.com'
-                pass: process.env.EMAIL_PASS  // e.g., 'your-16-char-app-password'
+                user: process.env.SMTP_USER || process.env.EMAIL_USER,
+                pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
             }
         });
 
+        const fromEmail = process.env.SMTP_USER || process.env.EMAIL_USER || 'support@goyafly.com';
+
         const mailOptions = {
-            from: `"GoyaFly B2B Portal" <${process.env.EMAIL_USER}>`,
+            from: `"GoyaFly Support" <${fromEmail}>`,
             to: toEmail,
             subject: subject,
             html: htmlBody,

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { walletService, bookingService } from '../../services/api';
 import { getValidationError } from '../../utils/validation';
 import { FaCalendarAlt } from 'react-icons/fa';
+import SeatMapSelector from '../../components/SeatMapSelector';
 
 const CheckoutDomestic = ({ bookingData }) => {
     const navigate = useNavigate();
@@ -14,6 +15,8 @@ const CheckoutDomestic = ({ bookingData }) => {
     const [loadingSSR, setLoadingSSR] = useState(false);
     const [selectedSeats, setSelectedSeats] = useState({}); // { paxIndex: seatCode }
     const [selectedMeals, setSelectedMeals] = useState({}); // { paxIndex: mealCode }
+    const [selectedBaggage, setSelectedBaggage] = useState({}); // { paxIndex: bagCode }
+    const [showSeatMap, setShowSeatMap] = useState(false);
     const [loadingBalance, setLoadingBalance] = useState(true);
     const [showTermsModal, setShowTermsModal] = useState(false);
     const [showItineraryMobile, setShowItineraryMobile] = useState(false);
@@ -23,7 +26,30 @@ const CheckoutDomestic = ({ bookingData }) => {
         : { adt: Number(bookingData.passengers) || 1, chd: 0, inf: 0 };
     const passengerCount = (paxBreakdown.adt || 1) + (paxBreakdown.chd || 0) + (paxBreakdown.inf || 0);
     const netPriceValue = bookingData?.details?.netfare || bookingData?.baseFare || 0;
-    const totalBookingPrice = netPriceValue * passengerCount;
+    
+    // Safely extract SSR arrays in case they are wrapped in Onward
+    const availableMeals = bookingData.details?.ssrInfo?.Meal || bookingData.details?.ssrInfo?.Onward?.Meal || bookingData.details?.ssrInfo?.onward?.Meal || [];
+    const availableBaggage = bookingData.details?.ssrInfo?.Baggage || bookingData.details?.ssrInfo?.Bagg || bookingData.details?.ssrInfo?.Onward?.Baggage || bookingData.details?.ssrInfo?.Onward?.Bagg || bookingData.details?.ssrInfo?.onward?.Baggage || bookingData.details?.ssrInfo?.onward?.Bagg || [];
+
+    // Calculate total SSR costs
+    const seatCost = Object.values(selectedSeats).reduce((sum, seatCode) => {
+        const seatObj = seatMap?.seats?.find(s => (s.code || s) === seatCode) 
+            || seatMap?.Seats?.find(s => (s.code || s) === seatCode) 
+            || seatMap?.data?.find(s => (s.code || s) === seatCode)
+            || seatMap?.FlightSeat?.Onward?.[0]?.SeatMap?.find(s => s.seatID === seatCode || s.seatName === seatCode);
+        return sum + parseFloat(seatObj?.amount || seatObj?.seatAmt || 0);
+    }, 0);
+    const mealCost = Object.values(selectedMeals).reduce((sum, mealCode) => {
+        const mealObj = availableMeals.find(m => (m.code || m.mealID) === mealCode);
+        return sum + parseFloat(mealObj?.amount || mealObj?.mealAmt || 0);
+    }, 0);
+    const baggageCost = Object.values(selectedBaggage).reduce((sum, bagCode) => {
+        const bagObj = availableBaggage.find(b => (b.code || b.baggID) === bagCode);
+        return sum + parseFloat(bagObj?.amount || bagObj?.baggAmt || 0);
+    }, 0);
+    
+    const totalSsrCost = seatCost + mealCost + baggageCost;
+    const totalBookingPrice = (netPriceValue * passengerCount) + totalSsrCost;
     const requiredBalance = totalBookingPrice;
 
     const [passengersList, setPassengersList] = useState(() => {
@@ -97,14 +123,19 @@ const CheckoutDomestic = ({ bookingData }) => {
         setLoadingSSR(true);
         setCurrentStep(2);
         try {
-            const res = await bookingService.ftdGetSeats(bookingData.details.flightID, bookingData.details.refID, {
-                title: passengersList[0].title,
-                fName: passengersList[0].firstName,
-                lName: passengersList[0].lastName,
-                pType: 'A'
-            });
+            const PTYPE_MAP = { ADT: 'A', CHD: 'C', INF: 'I', A: 'A', C: 'C', I: 'I' };
+            const paxData = passengersList.map(p => ({
+                title: p.title,
+                fName: p.firstName,
+                lName: p.lastName,
+                pType: PTYPE_MAP[p.pType] || PTYPE_MAP[p.type] || 'A'
+            }));
+            const res = await bookingService.ftdGetSeats(bookingData.details.flightID, bookingData.details.refID, paxData);
             if (res.success) setSeatMap(res.data);
-        } catch (err) { } finally { setLoadingSSR(false); }
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.message || 'Error fetching seat map');
+            console.error("SEAT MAP ERROR:", err);
+        } finally { setLoadingSSR(false); }
     };
 
     const handleFinalize = async (e) => {
@@ -150,12 +181,18 @@ const CheckoutDomestic = ({ bookingData }) => {
             };
 
             // FTD Section 9: SSR uses Baggage.Onward (not ssrInfo)
-            const hasSSR = selectedSeats[idx] || selectedMeals[idx];
+            const hasSSR = selectedSeats[idx] || selectedMeals[idx] || selectedBaggage[idx];
             if (hasSSR) {
+                const mealObj = availableMeals.find(m => (m.code || m.mealID) === selectedMeals[idx]);
+                const bagObj = availableBaggage.find(b => (b.code || b.baggID) === selectedBaggage[idx]);
+                const seatObj = seatMap?.seats?.find(s => (s.code || s) === selectedSeats[idx]) 
+                    || seatMap?.FlightSeat?.Onward?.[0]?.SeatMap?.find(s => s.seatID === selectedSeats[idx] || s.seatName === selectedSeats[idx]);
+                
                 paxObj.Baggage = {
                     Onward: {
-                        ...(selectedSeats[idx] ? { seat_no: selectedSeats[idx], seat_amount: '0' } : {}),
-                        ...(selectedMeals[idx] ? { meal: selectedMeals[idx], meal_amount: '0' } : {}),
+                        ...(selectedSeats[idx] ? { seat_no: selectedSeats[idx], seat_amount: (seatObj?.amount || seatObj?.seatAmt || 0).toString() } : {}),
+                        ...(mealObj ? { meal: mealObj.code || mealObj.mealID, meal_amount: (mealObj.amount || mealObj.mealAmt || 0).toString() } : {}),
+                        ...(bagObj ? { baggage: bagObj.code || bagObj.baggID, baggage_amount: (bagObj.amount || bagObj.baggAmt || 0).toString() } : {}),
                     }
                 };
             }
@@ -242,7 +279,7 @@ const CheckoutDomestic = ({ bookingData }) => {
                         {/* Mobile Toggle Header */}
                         <div className="lg:hidden bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-5 flex items-center justify-between cursor-pointer" onClick={() => setShowItineraryMobile(!showItineraryMobile)}>
                             <div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Flight Summary</span>
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">Flight Summary</span>
                                 <h3 className="text-sm font-bold text-slate-800">{bookingData.from} ➔ {bookingData.to}</h3>
                             </div>
                             <div className="flex items-center gap-3">
@@ -276,7 +313,7 @@ const CheckoutDomestic = ({ bookingData }) => {
                                     <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-center w-[30%]">
                                             <span className="block text-xl font-black text-slate-800">{bookingData.details.departureTime}</span>
-                                            <span className="text-[10px] font-black text-slate-400 uppercase">{bookingData.from}</span>
+                                            <span className="text-[10px] font-black text-slate-600 uppercase">{bookingData.from}</span>
                                         </div>
                                         <div className="flex-1 flex flex-col items-center">
                                             <span className="text-[9px] text-slate-400 font-black uppercase mb-1">{bookingData?.details?.duration}</span>
@@ -287,7 +324,7 @@ const CheckoutDomestic = ({ bookingData }) => {
                                         </div>
                                         <div className="text-center w-[30%]">
                                             <span className="block text-xl font-black text-slate-800">{bookingData.details.arrivalTime}</span>
-                                            <span className="text-[10px] font-black text-slate-400 uppercase">{bookingData.to}</span>
+                                            <span className="text-[10px] font-black text-slate-600 uppercase">{bookingData.to}</span>
                                         </div>
                                     </div>
 
@@ -299,21 +336,33 @@ const CheckoutDomestic = ({ bookingData }) => {
                             </div>
 
                             <div className="bg-slate-50 border-t border-slate-100 p-6">
-                                <h3 className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">Fare Summary ({passengerCount} Pax)</h3>
+                                <h3 className="text-[10px] font-black text-slate-600 mb-4 uppercase tracking-widest">Fare Summary ({passengerCount} Pax)</h3>
                                 <div className="space-y-3 mb-6">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-slate-600 font-bold uppercase">Base Fare</span>
-                                        <span className="text-sm font-black text-slate-800">₹{totalBookingPrice.toLocaleString()}</span>
+                                        <span className="text-sm font-black text-slate-800">₹{(netPriceValue * passengerCount).toLocaleString()}</span>
                                     </div>
-                                    {Object.keys(selectedSeats).length > 0 && (
+                                    {seatCost > 0 && (
                                         <div className="flex justify-between items-center text-blue-600 px-3 py-2 bg-blue-50/50 rounded-lg border border-blue-100/50">
                                             <span className="text-[11px] font-black uppercase">Selected Seats</span>
-                                            <span className="text-[11px] font-black">₹0 (Inc)</span>
+                                            <span className="text-[11px] font-black">₹{seatCost.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {mealCost > 0 && (
+                                        <div className="flex justify-between items-center text-blue-600 px-3 py-2 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                                            <span className="text-[11px] font-black uppercase">Meals</span>
+                                            <span className="text-[11px] font-black">₹{mealCost.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {baggageCost > 0 && (
+                                        <div className="flex justify-between items-center text-blue-600 px-3 py-2 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                                            <span className="text-[11px] font-black uppercase">Extra Baggage</span>
+                                            <span className="text-[11px] font-black">₹{baggageCost.toLocaleString()}</span>
                                         </div>
                                     )}
                                 </div>
                                 <div className="border-t border-slate-200 pt-6">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Grand Total</span>
+                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">Grand Total</span>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-3xl font-black text-[#F07E21]">₹{totalBookingPrice.toLocaleString()}</span>
                                         <span className="text-[10px] font-bold text-slate-400 uppercase">Inc. GST</span>
@@ -354,116 +403,110 @@ const CheckoutDomestic = ({ bookingData }) => {
                             </div>
                         </div>
                     </div>
-
                     {/* RIGHT COLUMN: STEP CONTENT */}
                     <div className="w-full lg:w-[65%]">
                         {currentStep === 1 && (
-                            <div className="space-y-6">
-                                {passengersList.map((p, index) => (
-                                    <div key={index} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">
-                                            <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">Traveller {index + 1} {index === 0 ? '(Lead)' : ''}</h3>
-                                            <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full uppercase tracking-widest border border-slate-100">{p.pType === 'C' ? 'Child' : p.pType === 'I' ? 'Infant' : 'Adult'}</span>
-                                        </div>
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 sm:p-10 relative overflow-hidden">
+                                <div className="space-y-10">
+                                    {passengersList.map((p, index) => (
+                                        <div key={index} className="relative">
+                                            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                                                <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">Traveller {index + 1} {index === 0 ? '(Lead)' : ''}</h3>
+                                                <span className="text-[9px] font-black text-slate-600 bg-slate-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full uppercase tracking-widest border border-slate-100">{p.pType === 'C' ? 'Child' : p.pType === 'I' ? 'Infant' : 'Adult'}</span>
+                                            </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                                            <div className="flex flex-col md:col-span-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Title</label>
-                                                <select value={p.title} onChange={(e) => handlePassengerChange(index, 'title', e.target.value)} className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all cursor-pointer">
-                                                    <option value="Mr">Mr</option><option value="Ms">Ms</option><option value="Mrs">Mrs</option>
-                                                </select>
-                                            </div>
-                                            <div className="flex flex-col md:col-span-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">First & Middle Name *</label>
-                                                <input value={p.firstName} onChange={(e) => handlePassengerChange(index, 'firstName', e.target.value)} placeholder="ENTER GIVEN NAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300 uppercase" required />
-                                            </div>
-                                            <div className="flex flex-col md:col-span-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Last Name *</label>
-                                                <input value={p.lastName} onChange={(e) => handlePassengerChange(index, 'lastName', e.target.value)} placeholder="SURNAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300 uppercase" required />
-                                            </div>
-                                            <div className="flex flex-col md:col-span-1">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Date of Birth *</label>
-                                                <div className="relative">
-                                                    <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-[#48A0D4] pointer-events-none" />
-                                                    <input type="date" value={p.dob} onChange={(e) => handlePassengerChange(index, 'dob', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full pl-11 pr-3 border-2 border-slate-100 rounded-xl h-[52px] text-xs font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all cursor-pointer" required />
+                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                                                <div className="flex flex-col md:col-span-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Title</label>
+                                                    <select value={p.title} onChange={(e) => handlePassengerChange(index, 'title', e.target.value)} className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all cursor-pointer">
+                                                        <option value="Mr">Mr</option><option value="Ms">Ms</option><option value="Mrs">Mrs</option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex flex-col md:col-span-2">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">First & Middle Name *</label>
+                                                    <input value={p.firstName} onChange={(e) => handlePassengerChange(index, 'firstName', e.target.value)} placeholder="ENTER GIVEN NAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-400 uppercase" required />
+                                                </div>
+                                                <div className="flex flex-col md:col-span-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Last Name *</label>
+                                                    <input value={p.lastName} onChange={(e) => handlePassengerChange(index, 'lastName', e.target.value)} placeholder="SURNAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-400 uppercase" required />
+                                                </div>
+                                                <div className="flex flex-col md:col-span-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Date of Birth *</label>
+                                                    <div className="relative">
+                                                        <input type="date" value={p.dob} onChange={(e) => handlePassengerChange(index, 'dob', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full px-4 pr-10 border-2 border-slate-100 rounded-xl h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden" required />
+                                                        <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-[#48A0D4] pointer-events-none" />
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {index === 0 && (validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) && (
+                                                <div className="mt-6 pt-6 border-t border-slate-50 animate-in slide-in-from-top-4 duration-500">
+                                                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col md:flex-row md:items-center gap-4">
+                                                        <div className="flex-1">
+                                                            <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 block">PAN Number (Mandatory) *</label>
+                                                            <input value={firstPaxPan} onChange={(e) => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full border-2 border-amber-200 rounded-lg px-4 h-[48px] sm:h-[52px] text-sm font-black text-slate-800 focus:border-amber-500 outline-none transition-all placeholder:text-amber-200 uppercase" />
+                                                        </div>
+                                                        <p className="text-[10px] text-amber-600 font-bold max-w-[200px]">GDS requires PAN details for the lead passenger.</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    <div className="relative pt-8 border-t-2 border-dashed border-slate-100">
+                                        <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest mb-6">Booking Notifications</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Mobile Number *</label>
+                                                <div className="flex">
+                                                    <div className="w-[70px] border-2 border-r-0 border-slate-100 rounded-l-xl bg-slate-50 flex items-center justify-center text-xs font-black text-slate-400 h-[52px]">🇮🇳 +91</div>
+                                                    <input type="tel" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="10 DIGITS" className="flex-1 border-2 border-slate-100 rounded-r-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-400" required />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Email Address *</label>
+                                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="TICKET@EXAMPLE.COM" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-400" required />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative pt-8 border-t-2 border-dashed border-slate-100">
+                                        <div className="mb-6">
+                                            <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">GST Details</h3>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Optional for Tax Invoice</p>
                                         </div>
 
-                                        {/* Mandatory PAN for Lead Passenger */}
-                                        {index === 0 && (validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) && (
-                                            <div className="mt-6 pt-6 border-t border-slate-50 animate-in slide-in-from-top-4 duration-500">
-                                                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col md:flex-row md:items-center gap-4">
-                                                    <div className="flex-1">
-                                                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2 block">PAN Number (Mandatory) *</label>
-                                                        <input value={firstPaxPan} onChange={(e) => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full border-2 border-amber-200 rounded-lg px-4 h-[48px] sm:h-[52px] text-sm font-black text-slate-800 focus:border-amber-500 outline-none transition-all placeholder:text-amber-200 uppercase" />
-                                                    </div>
-                                                    <p className="text-[10px] text-amber-600 font-bold max-w-[200px]">GDS requires PAN details for the lead passenger.</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">GST Number</label>
+                                                <input value={gst.number} onChange={(e) => setGst({ ...gst, number: e.target.value.toUpperCase() })} placeholder="GSTIN (e.g. 07AAAAA0000A1Z5)" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Company Name</label>
+                                                <input value={gst.company} onChange={(e) => setGst({ ...gst, company: e.target.value })} placeholder="REGISTERED AGENCY NAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" />
+                                            </div>
+                                        </div>
+
+                                        {gst.number && (
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">GST Email</label>
+                                                    <input value={gst.email} onChange={(e) => setGst({ ...gst, email: e.target.value })} placeholder="TAX@AGENCY.COM" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">GST Mobile</label>
+                                                    <input value={gst.mobile} onChange={(e) => setGst({ ...gst, mobile: e.target.value })} placeholder="10 DIGITS" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">GST Address</label>
+                                                    <input value={gst.address} onChange={(e) => setGst({ ...gst, address: e.target.value })} placeholder="BILLING ADDRESS" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400" />
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-                                ))}
-
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-2 h-full bg-[#eb5a0c]"></div>
-                                    <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">Booking Notifications</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Mobile Number *</label>
-                                            <div className="flex">
-                                                <div className="w-[70px] border-2 border-r-0 border-slate-100 rounded-l-xl bg-slate-50 flex items-center justify-center text-xs font-black text-slate-400 h-[52px]">🇮🇳 +91</div>
-                                                <input type="tel" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="10 DIGITS" className="flex-1 border-2 border-slate-100 rounded-r-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300" required />
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Email Address *</label>
-                                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="TICKET@EXAMPLE.COM" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300" required />
-                                        </div>
-                                    </div>
                                 </div>
 
-                                {/* GST Details Section */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
-                                    <div className="flex items-center justify-between border-b border-slate-100 pb-4 sm:pb-6 mb-6 sm:mb-8">
-                                        <div>
-                                            <h3 className="text-[14px] sm:text-[16px] font-black text-slate-800 uppercase tracking-widest">GST Details</h3>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Optional for Tax Invoice</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">GST Number</label>
-                                            <input value={gst.number} onChange={(e) => setGst({ ...gst, number: e.target.value.toUpperCase() })} placeholder="GSTIN (e.g. 07AAAAA0000A1Z5)" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Company Name</label>
-                                            <input value={gst.company} onChange={(e) => setGst({ ...gst, company: e.target.value })} placeholder="REGISTERED AGENCY NAME" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200" />
-                                        </div>
-                                    </div>
-
-                                    {gst.number && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
-                                            <div className="flex flex-col">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">GST Email</label>
-                                                <input value={gst.email} onChange={(e) => setGst({ ...gst, email: e.target.value })} placeholder="TAX@AGENCY.COM" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">GST Mobile</label>
-                                                <input value={gst.mobile} onChange={(e) => setGst({ ...gst, mobile: e.target.value })} placeholder="10 DIGITS" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200" />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">GST Address</label>
-                                                <input value={gst.address} onChange={(e) => setGst({ ...gst, address: e.target.value })} placeholder="BILLING ADDRESS" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none transition-all placeholder:text-slate-200" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button onClick={handleProceedToAddons} className="w-full bg-[#1D4171] hover:bg-[#15305B] text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-[13px] shadow-xl hover:-translate-y-1 transition-all active:scale-95">
+                                <button onClick={handleProceedToAddons} className="mt-10 w-full bg-[#1D4171] hover:bg-[#15305B] text-white font-black py-5 rounded-2xl uppercase tracking-[0.2em] text-[13px] shadow-xl hover:-translate-y-1 transition-all active:scale-95">
                                     Proceed to Add-ons →
                                 </button>
                             </div>
@@ -491,43 +534,72 @@ const CheckoutDomestic = ({ bookingData }) => {
                                                             <span className="text-sm font-black text-slate-800 uppercase tracking-widest">{p.firstName} {p.lastName}</span>
                                                         </div>
 
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                            {/* Seat Selection */}
                                                             <div>
-                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Preferred Seat</h4>
-                                                                <div className="grid grid-cols-4 gap-2">
-                                                                    {(seatMap?.seats || ['6A', '6B', '6C', '6D', '6E', '6F', '7A', '7B']).map(seatItem => {
-                                                                        const seatCode = typeof seatItem === 'string' ? seatItem : seatItem.code;
-                                                                        return (
-                                                                            <button
-                                                                                key={seatCode}
-                                                                                type="button"
-                                                                                onClick={() => setSelectedSeats(prev => ({ ...prev, [idx]: seatCode }))}
-                                                                                className={`py-3 px-1 rounded-xl text-[10px] font-black transition-all border-2 ${selectedSeats[idx] === seatCode ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' : 'bg-white text-slate-500 border-slate-100 hover:border-blue-200'}`}
-                                                                            >
-                                                                                {seatCode}
-                                                                            </button>
-                                                                        );
-                                                                    })}
+                                                                <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Preferred Seat</h4>
+                                                                {selectedSeats[idx] ? (
+                                                                    <div className="flex items-center justify-between border-2 border-emerald-200 bg-emerald-50 rounded-xl px-4 h-[52px]">
+                                                                        <span className="text-sm font-black text-emerald-700">Seat: {selectedSeats[idx]}</span>
+                                                                        <button onClick={() => setSelectedSeats(prev => { const n={...prev}; delete n[idx]; return n; })} className="text-emerald-700 hover:text-emerald-900 text-lg font-black">&times;</button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => setShowSeatMap(true)}
+                                                                        className="w-full border-2 border-slate-200 border-dashed rounded-xl h-[52px] text-sm font-black text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all uppercase tracking-widest"
+                                                                    >
+                                                                        + Select Seat
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Meal Selection */}
+                                                            {availableMeals && availableMeals.length > 0 && (
+                                                                <div>
+                                                                    <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Meal Option</h4>
+                                                                    <select
+                                                                        value={selectedMeals[idx] || ''}
+                                                                        onChange={(e) => setSelectedMeals(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                                        className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none bg-white"
+                                                                    >
+                                                                        <option value="">No Preference (Free)</option>
+                                                                        {availableMeals.map(meal => {
+                                                                            const mCode = meal.code || meal.mealID;
+                                                                            const mDesc = meal.desc || meal.mealDesc;
+                                                                            const mAmt = parseFloat(meal.amount || meal.mealAmt || 0);
+                                                                            return (
+                                                                                <option key={mCode} value={mCode}>
+                                                                                    {mDesc} {mAmt > 0 ? `(+₹${mAmt})` : '(Free)'}
+                                                                                </option>
+                                                                            );
+                                                                        })}
+                                                                    </select>
                                                                 </div>
-                                                                {seatMap?.seats?.length === 0 && <p className="text-[9px] text-amber-600 font-black uppercase mt-2">No advance seating available for this flight</p>}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Meal Option</h4>
-                                                                <select
-                                                                    value={selectedMeals[idx] || ''}
-                                                                    onChange={(e) => setSelectedMeals(prev => ({ ...prev, [idx]: e.target.value }))}
-                                                                    className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none bg-white"
-                                                                >
-                                                                    <option value="">No Preference</option>
-                                                                    {(seatMap?.meals || [
-                                                                        { code: 'VEG', name: 'Vegetarian Meal' },
-                                                                        { code: 'NON', name: 'Non-Veg Meal' },
-                                                                        { code: 'HNML', name: 'Hindu Meal' }
-                                                                    ]).map(meal => (
-                                                                        <option key={meal.code} value={meal.code}>{meal.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                            )}
+
+                                                            {/* Baggage Selection */}
+                                                            {availableBaggage && availableBaggage.length > 0 && (
+                                                                <div>
+                                                                    <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Extra Baggage</h4>
+                                                                    <select
+                                                                        value={selectedBaggage[idx] || ''}
+                                                                        onChange={(e) => setSelectedBaggage(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                                        className="w-full border-2 border-slate-100 rounded-xl px-4 h-[52px] text-sm font-black text-slate-800 focus:border-blue-500 outline-none bg-white"
+                                                                    >
+                                                                        <option value="">No Extra Baggage</option>
+                                                                        {availableBaggage.map(bag => {
+                                                                            const bCode = bag.code || bag.baggID;
+                                                                            const bDesc = bag.desc || bag.baggDesc;
+                                                                            const bAmt = parseFloat(bag.amount || bag.baggAmt || 0);
+                                                                            return (
+                                                                                <option key={bCode} value={bCode}>
+                                                                                    {bDesc} (+₹{bAmt})
+                                                                                </option>
+                                                                            );
+                                                                        })}
+                                                                    </select>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -618,6 +690,28 @@ const CheckoutDomestic = ({ bookingData }) => {
                     </div>
                 </div>
             )}
+
+            <SeatMapSelector
+                isOpen={showSeatMap}
+                onClose={() => setShowSeatMap(false)}
+                seatMapData={seatMap}
+                passengers={passengersList}
+                selectedSeats={selectedSeats}
+                onSeatSelect={(seat) => {
+                    // Assign seat to the next passenger without a seat, or replace the last one if all full
+                    const paxWithoutSeat = passengersList.findIndex((p, idx) => !selectedSeats[idx]);
+                    const targetIdx = paxWithoutSeat !== -1 ? paxWithoutSeat : 0;
+                    setSelectedSeats(prev => {
+                        const newSeats = { ...prev };
+                        // Remove seat if someone else has it
+                        for (const key in newSeats) {
+                            if (newSeats[key] === seat.code) delete newSeats[key];
+                        }
+                        newSeats[targetIdx] = seat.code;
+                        return newSeats;
+                    });
+                }}
+            />
         </div>
     );
 };

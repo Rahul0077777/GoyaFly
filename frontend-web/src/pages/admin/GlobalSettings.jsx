@@ -38,6 +38,19 @@ const GlobalSettings = () => {
         }
     };
 
+    const handleToggleService = async (serviceName) => {
+        try {
+            setUpdating(true);
+            const payload = { [serviceName]: settings[serviceName] === false ? true : false };
+            const res = await adminService.updateGlobalSettings(payload);
+            if (res.success) setSettings(res.data);
+        } catch (err) {
+            toast.error(`Failed to update service status`);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     const handleSaveMarkup = async () => {
         try {
             setUpdating(true);
@@ -144,6 +157,41 @@ const GlobalSettings = () => {
                     >
                         SAVE MARKUP
                     </button>
+                </div>
+
+                <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl border border-gray-100 flex flex-col justify-between group card-hover min-h-[400px]">
+                    <div>
+                        <h3 className="text-xl font-black text-gray-900 mb-2 italic">Service Toggles</h3>
+                        <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-10">Enable / Disable Specific Services</p>
+                        
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 rounded-2xl border transition-all duration-500 bg-slate-50 hover:bg-slate-100">
+                                <div>
+                                    <span className="font-black text-sm text-slate-800 block">OTB Service</span>
+                                    <span className="text-[10px] font-bold text-slate-500">Ok To Board access for agents</span>
+                                </div>
+                                <button 
+                                    onClick={() => handleToggleService('otbServiceActive')}
+                                    className={`w-14 h-7 rounded-full relative transition-all ${settings?.otbServiceActive === false ? 'bg-red-500' : 'bg-green-500'}`}
+                                >
+                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-sm ${settings?.otbServiceActive === false ? 'left-1' : 'right-1'}`}></div>
+                                </button>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 rounded-2xl border transition-all duration-500 bg-slate-50 hover:bg-slate-100">
+                                <div>
+                                    <span className="font-black text-sm text-slate-800 block">Fixed Departure</span>
+                                    <span className="text-[10px] font-bold text-slate-500">Group fare bookings</span>
+                                </div>
+                                <button 
+                                    onClick={() => handleToggleService('fixedDepartureServiceActive')}
+                                    className={`w-14 h-7 rounded-full relative transition-all ${settings?.fixedDepartureServiceActive === false ? 'bg-red-500' : 'bg-green-500'}`}
+                                >
+                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-sm ${settings?.fixedDepartureServiceActive === false ? 'left-1' : 'right-1'}`}></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl border border-gray-100 space-y-6 group card-hover min-h-[400px]">

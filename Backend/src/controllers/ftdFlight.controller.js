@@ -322,15 +322,16 @@ const verifyPriceController = async (req, res) => {
         // Apply Admin Markup to verification result to ensure consistency
         if (result) {
             const { isInternationalRoute } = require('../services/airportService');
-            const onward = result.Flights?.Onward || [];
-            const returnLeg = result.Flights?.Return || [];
+            // Try to extract segments to determine route type
+            const ftdData = result.ftdResponse || {};
+            const onward = ftdData.Flights?.Onward || [];
+            const returnLeg = ftdData.Flights?.Return || [];
             const allSegs = [...(Array.isArray(onward) ? onward : []), ...(Array.isArray(returnLeg) ? returnLeg : [])];
             
             let serType = 'DOMESTIC_FLIGHT';
             if (allSegs.length > 0) {
                 const first = allSegs[0];
                 const last = allSegs[allSegs.length - 1];
-                // Detection by route or international carrier
                 const INTL_CARRIERS = ['SV', 'FZ', 'G9', 'QR', 'EY', 'SQ', 'EK', 'TK', 'BA', 'UL'];
                 if (isInternationalRoute(first.depCode, last.arrCode) || INTL_CARRIERS.includes(first.airCode)) {
                     serType = 'INTERNATIONAL_FLIGHT';
@@ -343,9 +344,24 @@ const verifyPriceController = async (req, res) => {
                 if (agent && agent.agentCode) agentCode = agent.agentCode;
             }
             
-            // applyAdminMarkup expects an array
-            const markedResults = await applyAdminMarkup([result], serType, agentCode);
-            res.status(200).json({ success: true, data: markedResults[0] });
+            // Re-apply markup to the verified price
+            // result is { verified, currentNetfare, ftdResponse }
+            // We map it to a mock flight object for applyAdminMarkup
+            const mockFlight = { 
+                price: result.currentNetfare, 
+                netfare: result.currentNetfare,
+                airlineIata: allSegs.length > 0 ? allSegs[0].airCode : 'ALL',
+                refundType: ftdData.refundType || ftdData.Fare?.refundType === 'R' ? 'Refundable' : 'Non-Refundable'
+            };
+            const markedResults = await applyAdminMarkup([mockFlight], serType, agentCode);
+            
+            result.currentNetfare = markedResults[0].netfare;
+            result.adminMarkupApplied = markedResults[0].adminMarkupApplied || 0;
+
+            // Extract SSR Info for frontend (FTD nests this under result.ssrInfo)
+            result.ssrInfo = ftdData.result?.ssrInfo || ftdData.result?.SSR || ftdData.ssrInfo || ftdData.SSR || null;
+            
+            res.status(200).json({ success: true, data: result });
         } else {
             res.status(200).json({ success: true, data: result });
         }

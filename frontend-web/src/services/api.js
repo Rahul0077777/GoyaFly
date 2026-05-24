@@ -60,6 +60,11 @@ api.interceptors.response.use(
             toast.error(error.response.data.message || 'Account blocked. Please contact support.');
         }
         
+        // Global handling for 503 Service Unavailable (e.g. OTB/Fixed Departure disabled)
+        if (error.response && error.response.status === 503) {
+            toast.error(error.response.data?.message || 'Service is temporarily disabled. Please contact the administrator for any urgent requirements.');
+        }
+        
         return Promise.reject(error);
     }
 );
@@ -196,8 +201,8 @@ export const fixedDepartureService = {
         const response = await api.get('/fixed-departures/available-dates', { params: { from, to } });
         return response.data;
     },
-    bookFlight: async (flightId, passengers) => {
-        const response = await api.post('/fixed-departures/book', { flightId, passengers });
+    bookFlight: async (bookingData) => {
+        const response = await api.post('/fixed-departures/book', bookingData);
         return response.data;
     },
     getMyBookings: async () => {
@@ -613,8 +618,8 @@ export const adminService = {
         const response = await api.put(`/admin/fixed-departures/bookings/${id}/confirm`, { pnr, ticketNumber });
         return response.data;
     },
-    cancelFixedDepartureBooking: async (id) => {
-        const response = await api.put(`/admin/fixed-departures/bookings/${id}/cancel`);
+    cancelFixedDepartureBooking: async (id, remarks = '') => {
+        const response = await api.put(`/admin/fixed-departures/bookings/${id}/cancel`, { remarks });
         return response.data;
     },
     verifyFixedDepartureBookingPayment: async (id) => {

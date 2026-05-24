@@ -219,124 +219,125 @@ const CheckoutInternational = ({ bookingData }) => {
                     {/* Main Content */}
                     <div className="w-full lg:w-[65%] space-y-6 sm:space-y-8">
                         {currentStep === 1 && (
-                            <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {/* Contact Details */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100">
-                                    <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 border-l-4 border-purple-600 pl-4">Booking Communication</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Mobile Number</label>
-                                            <input type="tel" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="Phone" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-purple-500 transition-all outline-none bg-slate-50/50" />
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 sm:p-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative overflow-hidden">
+                                <div className="space-y-10">
+                                    {passengersList.map((p, idx) => (
+                                        <div key={idx} className="relative">
+                                            <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 flex items-center gap-3 border-b border-slate-100 pb-4">
+                                                <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#48A0D4] text-white flex items-center justify-center text-[10px] sm:text-xs">{idx + 1}</span>
+                                                Traveller {idx === 0 ? '(Adult - Lead)' : ''}
+                                            </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 sm:mb-10">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Title</label>
+                                                    <select value={p.title} onChange={e => handlePassengerChange(idx, 'title', e.target.value)} className="w-full border-2 border-slate-50 rounded-2xl px-4 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none">
+                                                        <option>Mr</option><option>Ms</option><option>Mrs</option>
+                                                    </select>
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">First Name</label>
+                                                    <input value={p.firstName} onChange={e => handlePassengerChange(idx, 'firstName', e.target.value)} placeholder="Given Name" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-slate-50/50" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Last Name</label>
+                                                    <input value={p.lastName} onChange={e => handlePassengerChange(idx, 'lastName', e.target.value)} placeholder="Surname" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-slate-50/50" />
+                                                </div>
+                                            </div>
+
+                                            {/* Mandatory PAN for Lead Passenger */}
+                                            {idx === 0 && (validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) && (
+                                                <div className="mb-8 sm:mb-10 animate-in slide-in-from-top-4 duration-500">
+                                                    <div className="bg-amber-50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-amber-100">
+                                                        <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-3 block">PAN Number (GDS Mandatory) *</label>
+                                                        <input value={firstPaxPan} onChange={e => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full md:w-1/2 border-2 border-amber-200 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-white" />
+                                                        <p className="text-[10px] text-amber-600 font-bold mt-3 uppercase tracking-tight">Lead passenger PAN is required by the airline to process this international fare.</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="bg-slate-50/50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-slate-100 space-y-6 sm:space-y-8">
+                                                <h4 className="text-[10px] font-black text-[#1D4171] uppercase tracking-widest flex items-center gap-2"> Passport & Identity Documents 🛂</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Date of Birth</label>
+                                                        <div className="relative">
+                                                            <input type="date" value={p.dob} onChange={e => handlePassengerChange(idx, 'dob', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full px-4 pr-10 border-2 border-slate-100 rounded-xl h-[48px] text-xs font-bold text-slate-800 outline-none cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:hidden" />
+                                                            <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-[#48A0D4] pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Passport Number</label>
+                                                        <input value={p.passportNumber} onChange={e => handlePassengerChange(idx, 'passportNumber', e.target.value.toUpperCase())} placeholder="L1234567" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 outline-none uppercase bg-white" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Passport Expiry Date</label>
+                                                        <div className="relative">
+                                                            <input type="date" value={p.passportExpiry} onChange={e => handlePassengerChange(idx, 'passportExpiry', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full px-4 pr-10 border-2 border-slate-100 rounded-xl h-[48px] text-xs font-bold text-slate-800 outline-none cursor-pointer bg-white [&::-webkit-calendar-picker-indicator]:hidden" />
+                                                            <FaCalendarAlt className="absolute right-4 top-1/2 -translate-y-1/2 text-[#1D4171] pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Nationality</label>
+                                                        <select value={p.nationality} onChange={e => handlePassengerChange(idx, 'nationality', e.target.value)} className="w-full border-2 border-slate-100 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 outline-none bg-white">
+                                                            <option value="IN">INDIA (IN)</option><option value="US">USA (US)</option><option value="AE">UAE (AE)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Email Address</label>
-                                            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-purple-500 transition-all outline-none bg-slate-50/50" />
+                                    ))}
+
+                                    {/* Contact Details */}
+                                    <div className="relative pt-8 border-t-2 border-dashed border-slate-100">
+                                        <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 border-l-4 border-purple-600 pl-4">Booking Communication</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Mobile Number</label>
+                                                <input type="tel" value={mobile} onChange={e => setMobile(e.target.value)} placeholder="Phone" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-purple-500 transition-all outline-none bg-slate-50/50" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Email Address</label>
+                                                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-purple-500 transition-all outline-none bg-slate-50/50" />
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* GST Details Section */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100">
-                                    <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 border-l-4 border-emerald-500 pl-4 flex items-center justify-between">
-                                        <span>GST Details</span>
-                                    </h3>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">GST Number</label>
-                                            <input value={gst.number} onChange={e => setGst({...gst, number: e.target.value.toUpperCase()})} placeholder="GSTIN" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-emerald-500 transition-all outline-none bg-slate-50/50" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Company Name</label>
-                                            <input value={gst.company} onChange={e => setGst({...gst, company: e.target.value})} placeholder="Company Name" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-emerald-500 transition-all outline-none bg-slate-50/50" />
-                                        </div>
-                                    </div>
-
-                                    {gst.number && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
-                                            <div>
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">GST Email</label>
-                                                <input value={gst.email} onChange={e => setGst({...gst, email: e.target.value})} placeholder="Email" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">GST Mobile</label>
-                                                <input value={gst.mobile} onChange={e => setGst({...gst, mobile: e.target.value})} placeholder="Mobile" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">GST Address</label>
-                                                <input value={gst.address} onChange={e => setGst({...gst, address: e.target.value})} placeholder="Address" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {passengersList.map((p, idx) => (
-                                    <div key={idx} className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100">
-                                        <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 flex items-center gap-3">
-                                            <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#48A0D4] text-white flex items-center justify-center text-[10px] sm:text-xs">{idx + 1}</span>
-                                            Traveller {idx === 0 ? '(Adult - Lead)' : ''}
+                                    {/* GST Details Section */}
+                                    <div className="relative pt-8 border-t-2 border-dashed border-slate-100">
+                                        <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest mb-6 sm:mb-8 border-l-4 border-emerald-500 pl-4 flex items-center justify-between">
+                                            <span>GST Details</span>
                                         </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 sm:mb-10">
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
                                             <div>
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Title</label>
-                                                <select value={p.title} onChange={e => handlePassengerChange(idx, 'title', e.target.value)} className="w-full border-2 border-slate-50 rounded-2xl px-4 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none">
-                                                    <option>Mr</option><option>Ms</option><option>Mrs</option>
-                                                </select>
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">First Name</label>
-                                                <input value={p.firstName} onChange={e => handlePassengerChange(idx, 'firstName', e.target.value)} placeholder="Given Name" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-slate-50/50" />
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">GST Number</label>
+                                                <input value={gst.number} onChange={e => setGst({...gst, number: e.target.value.toUpperCase()})} placeholder="GSTIN" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-emerald-500 transition-all outline-none bg-slate-50/50" />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Last Name</label>
-                                                <input value={p.lastName} onChange={e => handlePassengerChange(idx, 'lastName', e.target.value)} placeholder="Surname" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-slate-50/50" />
+                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">Company Name</label>
+                                                <input value={gst.company} onChange={e => setGst({...gst, company: e.target.value})} placeholder="Company Name" className="w-full border-2 border-slate-50 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 focus:border-emerald-500 transition-all outline-none bg-slate-50/50" />
                                             </div>
                                         </div>
 
-                                        {/* Mandatory PAN for Lead Passenger */}
-                                        {idx === 0 && (validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) && (
-                                            <div className="mb-8 sm:mb-10 animate-in slide-in-from-top-4 duration-500">
-                                                <div className="bg-amber-50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-amber-100">
-                                                    <label className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-3 block">PAN Number (GDS Mandatory) *</label>
-                                                    <input value={firstPaxPan} onChange={e => setFirstPaxPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" className="w-full md:w-1/2 border-2 border-amber-200 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none uppercase bg-white" />
-                                                    <p className="text-[10px] text-amber-600 font-bold mt-3 uppercase tracking-tight">Lead passenger PAN is required by the airline to process this international fare.</p>
+                                        {gst.number && (
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">GST Email</label>
+                                                    <input value={gst.email} onChange={e => setGst({...gst, email: e.target.value})} placeholder="Email" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">GST Mobile</label>
+                                                    <input value={gst.mobile} onChange={e => setGst({...gst, mobile: e.target.value})} placeholder="Mobile" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 block">GST Address</label>
+                                                    <input value={gst.address} onChange={e => setGst({...gst, address: e.target.value})} placeholder="Address" className="w-full border-2 border-slate-50 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 bg-slate-50/50 outline-none" />
                                                 </div>
                                             </div>
                                         )}
-                                        <div className="bg-slate-50/50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-slate-100 space-y-6 sm:space-y-8">
-                                            <h4 className="text-[10px] font-black text-[#1D4171] uppercase tracking-widest flex items-center gap-2"> Passport & Identity Documents 🛂</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                                <div>
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Date of Birth</label>
-                                                    <div className="relative">
-                                                        <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-[#48A0D4] pointer-events-none" />
-                                                        <input type="date" value={p.dob} onChange={e => handlePassengerChange(idx, 'dob', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full pl-11 pr-3 border-2 border-slate-100 rounded-xl h-[48px] text-xs font-bold text-slate-800 outline-none cursor-pointer bg-white" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Passport Number</label>
-                                                    <input value={p.passportNumber} onChange={e => handlePassengerChange(idx, 'passportNumber', e.target.value.toUpperCase())} placeholder="L1234567" className="w-full border-2 border-slate-100 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 outline-none uppercase bg-white" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Passport Expiry Date</label>
-                                                    <div className="relative">
-                                                        <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1D4171] pointer-events-none" />
-                                                        <input type="date" value={p.passportExpiry} onChange={e => handlePassengerChange(idx, 'passportExpiry', e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="w-full pl-11 pr-3 border-2 border-slate-100 rounded-xl h-[48px] text-xs font-bold text-slate-800 outline-none cursor-pointer bg-white" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Nationality</label>
-                                                    <select value={p.nationality} onChange={e => handlePassengerChange(idx, 'nationality', e.target.value)} className="w-full border-2 border-slate-100 rounded-xl px-4 h-[48px] text-sm font-bold text-slate-800 outline-none bg-white">
-                                                        <option value="IN">INDIA (IN)</option><option value="US">USA (US)</option><option value="AE">UAE (AE)</option>
-                                                    </select>
-                                                </div>
-
-                                            </div>
-                                        </div>
                                     </div>
-                                ))}
+                                </div>
 
-                                <button onClick={handleProceedToAddons} className="w-full bg-[#1D4171] hover:bg-[#15305B] text-white font-black py-4 sm:py-5 rounded-2xl uppercase tracking-widest text-[11px] sm:text-[13px] transition-all shadow-xl shadow-[#1D4171]/20 mt-8">
+                                <button onClick={handleProceedToAddons} className="mt-10 w-full bg-[#1D4171] hover:bg-[#15305B] text-white font-black py-4 sm:py-5 rounded-2xl uppercase tracking-widest text-[11px] sm:text-[13px] transition-all shadow-xl shadow-[#1D4171]/20">
                                     Select Add-ons →
                                 </button>
                             </div>
@@ -349,7 +350,7 @@ const CheckoutInternational = ({ bookingData }) => {
                                     {loadingSSR ? (
                                         <div className="py-20 flex flex-col items-center gap-4">
                                             <div className="w-10 h-10 border-4 border-[#48A0D4] border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching Seat Map...</p>
+                                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Fetching Seat Map...</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-8 sm:space-y-12">
@@ -360,7 +361,7 @@ const CheckoutInternational = ({ bookingData }) => {
                                                     </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10">
                                                         <div>
-                                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Select Seat</h4>
+                                                            <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Select Seat</h4>
                                                             <div className="grid grid-cols-4 gap-2">
                                                                 {(seatMap?.seats || ['14A', '14B', '14C', '14D', '14E', '14F', '15A', '15B']).map(sc => (
                                                                     <button key={sc} type="button" onClick={() => setSelectedSeats({...selectedSeats, [idx]: sc})} className={`py-3 sm:py-4 rounded-xl text-[10px] font-black transition-all border-2 ${selectedSeats[idx] === sc ? 'bg-[#48A0D4] text-white border-[#48A0D4] shadow-lg shadow-[#48A0D4]/20' : 'bg-white text-slate-500 border-slate-100 hover:border-[#48A0D4]'}`}>{sc}</button>
@@ -368,7 +369,7 @@ const CheckoutInternational = ({ bookingData }) => {
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Meal Preference</h4>
+                                                            <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Meal Preference</h4>
                                                             <select value={selectedMeals[idx] || ''} onChange={e => setSelectedMeals({...selectedMeals, [idx]: e.target.value})} className="w-full border-2 border-slate-100 rounded-2xl px-4 sm:px-6 h-[48px] sm:h-[56px] text-sm font-bold text-slate-800 outline-none bg-white">
                                                                 <option value="">Default Meal</option>
                                                                 <option value="VGML">Vegetarian Meal (VGML)</option>
@@ -392,12 +393,43 @@ const CheckoutInternational = ({ bookingData }) => {
 
                         {currentStep === 3 && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100 text-center py-20">
-                                    <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-4">Review & Confirm</h3>
-                                    <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto mb-10 leading-relaxed uppercase tracking-tight">Please double-check passenger documents before payment.</p>
-                                    <div className="flex items-center justify-center gap-4">
+                                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100">
+                                    <div className="text-center mb-10">
+                                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-4">Review & Confirm</h3>
+                                        <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto leading-relaxed uppercase tracking-tight">Please double-check passenger documents before payment.</p>
+                                    </div>
+                                    <div className="space-y-4 mb-10">
+                                        {passengersList.map((p, idx) => (
+                                            <div key={idx} className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col md:flex-row gap-4 justify-between md:items-center">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-[#48A0D4] uppercase tracking-widest mb-1">Traveller {idx + 1}</p>
+                                                    <p className="text-sm font-bold text-slate-800 uppercase">{p.title} {p.firstName} {p.lastName}</p>
+                                                    <p className="text-xs font-medium text-slate-500">DOB: {p.dob || 'N/A'}</p>
+                                                </div>
+                                                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm md:w-[60%] grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Passport No</p>
+                                                        <p className="text-xs font-bold text-slate-800 uppercase">{p.passportNumber || 'MISSING'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Expiry</p>
+                                                        <p className="text-xs font-bold text-slate-800 uppercase">{p.passportExpiry || 'MISSING'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Nationality</p>
+                                                        <p className="text-xs font-bold text-slate-800 uppercase">{p.nationality || 'MISSING'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Seat/Meal</p>
+                                                        <p className="text-xs font-bold text-slate-800">{selectedSeats[idx] || 'Any'} / {selectedMeals[idx] ? selectedMeals[idx].split(' ')[0] : 'Standard'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center justify-center gap-4 py-6 border-t border-slate-100">
                                         <label className="flex items-center gap-3 cursor-pointer">
-                                            <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="w-5 h-5 rounded" />
+                                            <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="w-5 h-5 rounded accent-[#F07E21]" />
                                             <span className="text-sm font-bold text-slate-600">I confirm document accuracy</span>
                                         </label>
                                     </div>
@@ -432,7 +464,7 @@ const CheckoutInternational = ({ bookingData }) => {
                         {/* Mobile Toggle Header */}
                         <div className="lg:hidden bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-5 flex items-center justify-between cursor-pointer" onClick={() => setShowItineraryMobile(!showItineraryMobile)}>
                             <div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Flight Summary</span>
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">Flight Summary</span>
                                 <h3 className="text-sm font-bold text-slate-800">{bookingData?.from} ➔ {bookingData?.to}</h3>
                             </div>
                             <div className="flex items-center gap-3">
@@ -463,7 +495,7 @@ const CheckoutInternational = ({ bookingData }) => {
                                     </div>
                                     <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border-2 transition-all duration-500 ${balance < requiredBalance ? 'bg-red-50 border-red-100 flex flex-col gap-4' : 'bg-slate-50 border-slate-100 flex justify-between items-center'}`}>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Wallet</span>
+                                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Active Wallet</span>
                                             <span className={`text-xl font-black ${balance < requiredBalance ? 'text-red-500 animate-pulse' : 'text-green-600'}`}>₹{balance.toLocaleString()}</span>
                                         </div>
                                         {balance < requiredBalance && (

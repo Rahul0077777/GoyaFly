@@ -50,16 +50,42 @@ const calculateDuration = (deptTime, arrTime) => {
     }
 };
 
+const INDIA_CITIES = [
+  'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Ahmedabad', 'Pune', 'Jaipur', 'Goa',
+  'Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Lucknow', 'Varanasi', 'Patna', 'Gaya',
+  'Bhubaneswar', 'Guwahati', 'Bagdogra', 'Amritsar', 'Chandigarh', 'Srinagar', 'Jammu', 'Leh', 'Dehradun', 'Shimla',
+  'Indore', 'Bhopal', 'Nagpur', 'Raipur', 'Ranchi', 'Surat', 'Vadodara', 'Rajkot', 'Jodhpur', 'Udaipur',
+  'Jaisalmer', 'Agra', 'Kanpur', 'Prayagraj', 'Gorakhpur', 'Port Blair', 'Tirupati', 'Vijayawada', 'Visakhapatnam', 'Mangalore',
+  'Hubli', 'Belagavi', 'Mysore', 'Pondicherry', 'Salem', 'Tuticorin', 'Kadapa', 'Kurnool', 'Rajahmundry', 'Warangal',
+  'Bilaspur', 'Jagdalpur', 'Jharsuguda', 'Rourkela', 'Dibrugarh', 'Jorhat', 'Silchar', 'Tezpur', 'Dimapur', 'Imphal',
+  'Agartala', 'Aizawl', 'Shillong', 'Pakyong', 'Darbhanga', 'Deoghar', 'Durgapur', 'Cooch Behar', 'Rupsi', 'Passighat'
+].map(c => c.toLowerCase());
+
+const checkIsInternational = (flight) => {
+    if (!flight) return false;
+    if (flight.isInternational) return true;
+    const fromInIndia = flight.fromCity ? INDIA_CITIES.includes(flight.fromCity.toLowerCase().trim()) : false;
+    const toInIndia = flight.toCity ? INDIA_CITIES.includes(flight.toCity.toLowerCase().trim()) : false;
+    return !(fromInIndia && toInIndia);
+};
+
 const FixedDepartureBookingForm = () => {
     const { state } = useLocation();
     const navigate = useNavigate();
     const flight = state?.flight;
 
+    const paxConfig = state?.pax || { adults: 1, children: 0, infants: 0 };
     const [step, setStep] = useState(1);
-    const [isInternational, setIsInternational] = useState(flight?.isInternational || false);
-    const [passengers, setPassengers] = useState([
-        { firstName: '', lastName: '', dob: '', age: '', gender: 'Male', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' }
-    ]);
+    const [isInternational, setIsInternational] = useState(() => checkIsInternational(flight));
+    
+    const [passengers, setPassengers] = useState(() => {
+        const initial = [];
+        for(let i=0; i<paxConfig.adults; i++) initial.push({ passengerType: 'Adult', gender: 'Male', firstName: '', lastName: '', dob: '', mobileNumber: '', email: '', passportNumber: '', passportIssue: '', passportExpiry: '', nationality: 'IN' });
+        for(let i=0; i<paxConfig.children; i++) initial.push({ passengerType: 'Child', gender: 'Male', firstName: '', lastName: '', dob: '', mobileNumber: '', email: '', passportNumber: '', passportIssue: '', passportExpiry: '', nationality: 'IN' });
+        for(let i=0; i<paxConfig.infants; i++) initial.push({ passengerType: 'Infant', gender: 'Male', firstName: '', lastName: '', dob: '', mobileNumber: '', email: '', passportNumber: '', passportIssue: '', passportExpiry: '', nationality: 'IN' });
+        return initial;
+    });
+    
     const [submitting, setSubmitting] = useState(false);
 
     if (!flight) {
@@ -67,35 +93,19 @@ const FixedDepartureBookingForm = () => {
         return null;
     }
 
-    const handleAddPassenger = () => {
-        if (passengers.length >= flight.availableSeats) {
-            return toast.warn(`Only ${flight.availableSeats} seats available on this flight.`);
-        }
-        setPassengers([...passengers, { firstName: '', lastName: '', dob: '', age: '', gender: 'Male', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' }]);
-    };
-
-    const handleRemovePassenger = (index) => {
-        const newPassengers = passengers.filter((_, i) => i !== index);
-        setPassengers(newPassengers);
-    };
-
     const handleInputChange = (index, field, value) => {
         const newPassengers = [...passengers];
         newPassengers[index][field] = value;
         if (field === 'dob' && value) {
-            const birthYear = new Date(value).getFullYear();
-            const currentYear = new Date().getFullYear();
-            if (birthYear && currentYear >= birthYear) {
-                newPassengers[index].age = (currentYear - birthYear).toString();
-            }
+            // Keep dob but do not calculate age
         }
         setPassengers(newPassengers);
     };
 
     const validateStep2 = () => {
         for (const p of passengers) {
-            if (!p.firstName || !p.lastName || !p.age || !p.mobileNumber || !p.email) {
-                toast.error('Please fill in First Name, Last Name, Age, Mobile Number, and Email ID for all travelers.');
+            if (!p.firstName || !p.lastName || !p.mobileNumber || !p.email) {
+                toast.error('Please fill in First Name, Last Name, Mobile Number, and Email ID for all travelers.');
                 return false;
             }
             if (isInternational) {
@@ -114,7 +124,15 @@ const FixedDepartureBookingForm = () => {
 
         setSubmitting(true);
         try {
-            const res = await fixedDepartureService.bookFlight(flight._id, passengers, isInternational);
+            const bookingData = {
+                flightId: flight._id,
+                passengers,
+                isInternational,
+                adults: paxConfig.adults,
+                children: paxConfig.children,
+                infants: paxConfig.infants
+            };
+            const res = await fixedDepartureService.bookFlight(bookingData);
             if (res.success) {
                 toast.success('Booking request submitted successfully!');
                 navigate('/agent/fixed-departure-history');
@@ -126,7 +144,10 @@ const FixedDepartureBookingForm = () => {
         }
     };
 
-    const totalFare = flight.fare * passengers.length;
+    const adultTotal = paxConfig.adults * flight.fare;
+    const childTotal = paxConfig.children * (flight.childFare || 0);
+    const infantTotal = paxConfig.infants * (flight.infantFare || 0);
+    const totalFare = adultTotal + childTotal + infantTotal;
 
     return (
         <div className="p-3 md:p-5 bg-slate-50 min-h-screen font-sans">
@@ -247,27 +268,27 @@ const FixedDepartureBookingForm = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                                 <div>
-                                    <p className="text-white/60 font-bold text-[10px] uppercase tracking-widest mb-0.5">Departure</p>
-                                    <p className="text-xl font-black mb-0.5">{flight.fromCity}</p>
-                                    <p className="text-[#F07E21] font-black text-sm">{flight.departureTime}</p>
-                                    <p className="text-white/60 text-[10px] font-bold mt-0.5">{new Date(flight.departureDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                    <p className="text-white/80 font-bold text-xs md:text-sm uppercase tracking-widest mb-1">Departure</p>
+                                    <p className="text-2xl md:text-4xl font-black mb-1 capitalize">{flight.fromCity}</p>
+                                    <p className="text-[#F07E21] font-black text-lg md:text-xl">{flight.departureTime}</p>
+                                    <p className="text-white/80 text-xs md:text-sm font-bold mt-1">{new Date(flight.departureDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                 </div>
                                 <div className="flex flex-col items-center justify-center px-4 py-3 md:py-0">
-                                    <p className="text-white font-bold text-[10px] mb-1.5 tracking-wider">
+                                    <p className="text-white font-bold text-sm md:text-lg mb-2 tracking-wider">
                                         {calculateDuration(flight.departureTime, flight.arrivalTime)}
                                     </p>
                                     <div className="w-full flex items-center gap-2">
                                         <div className="h-[2px] bg-white/20 flex-1 relative" />
-                                        <FaPlaneDeparture className="text-[#F07E21] text-lg animate-bounce" />
+                                        <FaPlaneDeparture className="text-[#F07E21] text-2xl md:text-3xl animate-bounce" />
                                         <div className="h-[2px] bg-white/20 flex-1 relative" />
                                     </div>
-                                    <p className="text-white/60 text-[8px] font-black uppercase tracking-widest mt-2">Direct Fixed Departure</p>
+                                    <p className="text-white/80 text-[10px] md:text-xs font-black uppercase tracking-widest mt-2">Direct Fixed Departure</p>
                                 </div>
                                 <div className="md:text-right">
-                                    <p className="text-white/60 font-bold text-[10px] uppercase tracking-widest mb-0.5">Arrival</p>
-                                    <p className="text-xl font-black mb-0.5">{flight.toCity}</p>
-                                    <p className="text-[#F07E21] font-black text-sm">{flight.arrivalTime}</p>
-                                    <p className="text-white/60 text-[10px] font-bold mt-0.5">{new Date(flight.departureDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                    <p className="text-white/80 font-bold text-xs md:text-sm uppercase tracking-widest mb-1">Arrival</p>
+                                    <p className="text-2xl md:text-4xl font-black mb-1 capitalize">{flight.toCity}</p>
+                                    <p className="text-[#F07E21] font-black text-lg md:text-xl">{flight.arrivalTime}</p>
+                                    <p className="text-white/80 text-xs md:text-sm font-bold mt-1">{new Date(flight.departureDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                 </div>
                             </div>
                         </div>
@@ -285,7 +306,7 @@ const FixedDepartureBookingForm = () => {
                                     </p>
                                     <ul className="text-[10px] font-bold text-slate-500 space-y-0.5">
                                         <li>• Cabin Baggage: <strong className="text-slate-700">7 KG per passenger</strong></li>
-                                        <li>• Check-in Baggage: <strong className="text-slate-700">{isInternational ? '20 KG (International)' : '15 KG (Domestic)'}</strong></li>
+                                        <li>• Check-in Baggage: <strong className="text-slate-700">{isInternational ? '30 KG (International)' : '15 KG (Domestic)'}</strong></li>
                                     </ul>
                                 </div>
                             </div>
@@ -343,35 +364,31 @@ const FixedDepartureBookingForm = () => {
                                     {isInternational ? 'International booking: Passport details are mandatory for all travelers' : 'Domestic booking: Enter names as per valid government ID'}
                                 </p>
                             </div>
-                            <button 
-                                type="button"
-                                onClick={handleAddPassenger}
-                                className="bg-[#48A0D4]/10 text-[#48A0D4] px-5 py-3 rounded-xl font-black text-xs flex items-center gap-2 hover:bg-[#48A0D4] hover:text-white transition-all shadow-sm border border-[#48A0D4]/20"
-                            >
-                                <FaPlus /> ADD TRAVELER
-                            </button>
                         </div>
 
                         <div className="space-y-6 mb-8">
                             {passengers.map((p, index) => (
                                 <div key={index} className="p-6 bg-slate-50/70 rounded-[2rem] border border-slate-100 relative group animate-in slide-in-from-right duration-300 shadow-sm">
-                                    <div className="absolute -top-3 -left-3 w-8 h-8 bg-[#1D4171] text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg shadow-[#1D4171]/30">
-                                        {index + 1}
+                                    <div className="absolute -top-3 -left-3 px-3 h-8 bg-[#1D4171] text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg shadow-[#1D4171]/30">
+                                        Traveler {index + 1} ({p.passengerType})
                                     </div>
                                     
-                                    {passengers.length > 1 && (
-                                        <button 
-                                            type="button"
-                                            onClick={() => handleRemovePassenger(index)}
-                                            className="absolute top-4 right-4 text-red-400 hover:text-red-600 bg-white p-2.5 rounded-lg shadow-sm border border-slate-100 transition-all hover:scale-105"
-                                            title="Remove Traveler"
-                                        >
-                                            <FaTrash size={12} />
-                                        </button>
-                                    )}
+
 
                                     {/* Core Fields */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pt-1">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</label>
+                                            <select 
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:ring-2 ring-[#48A0D4] outline-none shadow-sm transition-all"
+                                                value={p.gender}
+                                                onChange={e => handleInputChange(index, 'gender', e.target.value)}
+                                            >
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">First Name</label>
                                             <div className="relative">
@@ -399,39 +416,20 @@ const FixedDepartureBookingForm = () => {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Birth (Optional)</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                Date of Birth {(isInternational || p.passengerType === 'Child' || p.passengerType === 'Infant') ? '(Required)' : '(Optional)'}
+                                            </label>
                                             <div className="relative">
                                                 <FaCalendarAlt className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#48A0D4] text-xs pointer-events-none" />
                                                 <input 
                                                     type="date"
+                                                    required={isInternational || p.passengerType === 'Child' || p.passengerType === 'Infant'}
                                                     onClick={(e) => e.target.showPicker && e.target.showPicker()}
                                                     className="w-full pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:ring-2 ring-[#48A0D4] outline-none shadow-sm transition-all cursor-pointer"
                                                     value={p.dob}
                                                     onChange={e => handleInputChange(index, 'dob', e.target.value)}
                                                 />
                                             </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Age</label>
-                                            <input 
-                                                type="number" required min="1" max="120"
-                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:ring-2 ring-[#48A0D4] outline-none shadow-sm transition-all"
-                                                placeholder="e.g. 28"
-                                                value={p.age}
-                                                onChange={e => handleInputChange(index, 'age', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</label>
-                                            <select 
-                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:ring-2 ring-[#48A0D4] outline-none shadow-sm transition-all"
-                                                value={p.gender}
-                                                onChange={e => handleInputChange(index, 'gender', e.target.value)}
-                                            >
-                                                <option value="Male">Male</option>
-                                                <option value="Female">Female</option>
-                                                <option value="Other">Other</option>
-                                            </select>
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mobile No (Required)</label>
@@ -615,17 +613,21 @@ const FixedDepartureBookingForm = () => {
 
                                     <div className="space-y-4 mb-6">
                                         <div className="flex justify-between items-center text-slate-600 font-bold text-xs">
-                                            <span>Base Fare per seat</span>
-                                            <span className="font-black text-slate-800 text-sm">₹{flight.fare}</span>
+                                            <span>Adult Fare ({paxConfig.adults}x)</span>
+                                            <span className="text-slate-800 font-black">₹{adultTotal}</span>
                                         </div>
-                                        <div className="flex justify-between items-center text-slate-600 font-bold text-xs">
-                                            <span>Number of Travelers</span>
-                                            <span className="font-black text-slate-800 text-sm">x{passengers.length}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-slate-600 font-bold text-xs">
-                                            <span>GST & Taxes</span>
-                                            <span className="font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider">Not Applicable / Excluded</span>
-                                        </div>
+                                        {paxConfig.children > 0 && (
+                                            <div className="flex justify-between items-center text-slate-600 font-bold text-xs">
+                                                <span>Child Fare ({paxConfig.children}x)</span>
+                                                <span className="text-slate-800 font-black">₹{childTotal}</span>
+                                            </div>
+                                        )}
+                                        {paxConfig.infants > 0 && (
+                                            <div className="flex justify-between items-center text-slate-600 font-bold text-xs">
+                                                <span>Infant Fare ({paxConfig.infants}x)</span>
+                                                <span className="text-slate-800 font-black">₹{infantTotal}</span>
+                                            </div>
+                                        )}
                                         <div className="pt-4 border-t border-dashed border-slate-200 flex justify-between items-center">
                                             <div>
                                                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Net Payable</p>

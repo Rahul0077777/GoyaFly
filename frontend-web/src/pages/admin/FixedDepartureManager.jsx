@@ -90,6 +90,8 @@ const FixedDepartureManager = () => {
         departureTime: '',
         arrivalTime: '',
         fare: '',
+        childFare: '',
+        infantFare: '',
         totalSeats: '',
         availableSeats: '',
         status: 'Available',
@@ -164,6 +166,8 @@ const FixedDepartureManager = () => {
                 departureTime: '',
                 arrivalTime: '',
                 fare: '',
+                childFare: '',
+                infantFare: '',
                 totalSeats: '',
                 availableSeats: '',
                 status: 'Available',
@@ -318,9 +322,19 @@ const FixedDepartureManager = () => {
                         </div>
 
                         <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                            <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase">Fare per Pax</p>
-                                <p className="text-2xl font-black text-[#1D4171]">₹{flight.fare}</p>
+                            <div className="flex gap-4">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Adult</p>
+                                    <p className="text-xl font-black text-[#1D4171]">₹{flight.fare}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Child</p>
+                                    <p className="text-xl font-black text-[#1D4171]">₹{flight.childFare || 0}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">Infant</p>
+                                    <p className="text-xl font-black text-[#1D4171]">₹{flight.infantFare || 0}</p>
+                                </div>
                             </div>
                             <div className="flex gap-2">
                                 <button 
@@ -447,14 +461,34 @@ const FixedDepartureManager = () => {
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fare (per passenger)</label>
-                                <input 
-                                    type="number" required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#F07E21]"
-                                    value={formData.fare}
-                                    onChange={e => setFormData({...formData, fare: e.target.value})}
-                                />
+                            <div className="space-y-1 flex gap-4">
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adult Fare</label>
+                                    <input 
+                                        type="number" required
+                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#F07E21]"
+                                        value={formData.fare}
+                                        onChange={e => setFormData({...formData, fare: e.target.value})}
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Child Fare</label>
+                                    <input 
+                                        type="number" required
+                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#1D4171]"
+                                        value={formData.childFare}
+                                        onChange={e => setFormData({...formData, childFare: e.target.value})}
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Infant Fare</label>
+                                    <input 
+                                        type="number" required
+                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#1D4171]"
+                                        value={formData.infantFare}
+                                        onChange={e => setFormData({...formData, infantFare: e.target.value})}
+                                    />
+                                </div>
                             </div>
                             <div className="space-y-1 flex gap-4">
                                 <div className="flex-1">

@@ -15,6 +15,21 @@ const checkMaintenance = async (req, res, next) => {
                 maintenance: true
             });
         }
+
+        if (settings && settings.otbServiceActive === false && req.path.startsWith('/otb')) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'OTB Service is temporarily disabled by Admin. Please contact the administrator for any urgent requirements.'
+            });
+        }
+
+        if (settings && settings.fixedDepartureServiceActive === false && req.path.startsWith('/fixed-departures')) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'Fixed Departure Service is temporarily disabled by Admin. Please contact the administrator for any urgent requirements.'
+            });
+        }
+
         next();
     } catch (error) {
         // If settings fail, don't block the app, just log

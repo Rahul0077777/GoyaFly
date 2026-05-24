@@ -50,7 +50,7 @@ loadAirports();
 /**
  * Searches for airports using the in-memory global dataset
  */
-const searchAirports = async (query) => {
+    const searchAirports = async (query) => {
     try {
         if (!query || query.length < 2) return [];
 
@@ -61,9 +61,33 @@ const searchAirports = async (query) => {
             a.code.toLowerCase().includes(searchTerm) ||
             a.city.toLowerCase().includes(searchTerm) ||
             a.label.toLowerCase().includes(searchTerm)
-        ).slice(0, 15);
+        );
 
-        return results;
+        results.sort((a, b) => {
+            const aCodeExact = a.code.toLowerCase() === searchTerm;
+            const bCodeExact = b.code.toLowerCase() === searchTerm;
+            if (aCodeExact && !bCodeExact) return -1;
+            if (!aCodeExact && bCodeExact) return 1;
+            
+            const aCityExact = a.city.toLowerCase() === searchTerm;
+            const bCityExact = b.city.toLowerCase() === searchTerm;
+            if (aCityExact && !bCityExact) return -1;
+            if (!aCityExact && bCityExact) return 1;
+
+            const aCodeStarts = a.code.toLowerCase().startsWith(searchTerm);
+            const bCodeStarts = b.code.toLowerCase().startsWith(searchTerm);
+            if (aCodeStarts && !bCodeStarts) return -1;
+            if (!aCodeStarts && bCodeStarts) return 1;
+
+            const aCityStarts = a.city.toLowerCase().startsWith(searchTerm);
+            const bCityStarts = b.city.toLowerCase().startsWith(searchTerm);
+            if (aCityStarts && !bCityStarts) return -1;
+            if (!aCityStarts && bCityStarts) return 1;
+            
+            return 0;
+        });
+
+        return results.slice(0, 15);
     } catch (error) {
         logger.error('Airport Search Error: ' + error.message);
         return [];

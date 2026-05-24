@@ -73,9 +73,10 @@ const confirmBooking = async (req, res) => {
         booking.ticketNumber = ticketNumber;
         await booking.save();
 
-        // Reduce available seats
+        // Reduce available seats (Infants don't take a seat)
         const flight = await FixedDeparture.findById(booking.flightId._id);
-        flight.availableSeats -= booking.passengers.length;
+        const seatsToDeduct = (booking.adults + booking.children) || booking.passengers.length;
+        flight.availableSeats -= seatsToDeduct;
         if (flight.availableSeats <= 0) {
             flight.status = 'Sold Out';
         }
@@ -191,6 +192,7 @@ const verifyPayment = async (req, res) => {
 // @route   PUT /api/admin/fixed-departures/bookings/:id/cancel
 const cancelBooking = async (req, res) => {
     try {
+        const { remarks } = req.body || {};
         const booking = await FixedDepartureBooking.findById(req.params.id);
         if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
         
@@ -199,6 +201,9 @@ const cancelBooking = async (req, res) => {
         }
 
         booking.status = 'Cancelled';
+        if (remarks) {
+            booking.remarks = remarks;
+        }
         await booking.save();
 
         // Refund Agent
@@ -216,7 +221,7 @@ const cancelBooking = async (req, res) => {
                 balanceAfterTransaction: agent.walletBalance,
                 referenceId: `REF-CAN-${booking._id}-${Date.now()}`,
                 status: 'SUCCESS',
-                remark: `Refund for Fixed Departure Booking Cancelled (${booking._id})`
+                remark: `Refund for Fixed Departure Booking Cancelled (${booking._id})${remarks ? ` - Reason: ${remarks}` : ''}`
             });
         }
 
@@ -225,7 +230,7 @@ const cancelBooking = async (req, res) => {
         await Notification.create({
             agentId: booking.agentId,
             title: `Fixed Departure Cancelled & Refunded`,
-            message: `Your booking request (${booking._id}) has been cancelled by admin. ₹${booking.totalFare} has been credited back to your wallet.`,
+            message: `Your booking request (${booking._id}) has been cancelled by admin. ₹${booking.totalFare} has been credited back to your wallet.${remarks ? ` Reason: ${remarks}` : ''}`,
             type: 'WARNING',
             link: '/agent/fixed-departure-history'
         });
@@ -289,17 +294,35 @@ const searchFlights = async (req, res) => {
 // @desc    Request a booking (Agent)
 // @route   POST /api/fixed-departures/book
 const bookFlight = async (req, res) => {
-    const { flightId, passengers, isInternational } = req.body;
+    const { flightId, passengers, isInternational, adults, children, infants } = req.body;
     try {
         const flight = await FixedDeparture.findById(flightId);
         if (!flight) return res.status(404).json({ success: false, message: 'Flight not found' });
         
-        if (flight.availableSeats < passengers.length) {
+        const numAdults = parseInt(adults) || 1;
+        const numChildren = parseInt(children) || 0;
+        const numInfants = parseInt(infants) || 0;
+        const seatConsumingPax = numAdults + numChildren;
+
+        if (flight.availableSeats < seatConsumingPax) {
             return res.status(400).json({ success: false, message: 'Insufficient seats available' });
         }
 
         const agent = await Agent.findById(req.user._id);
-        const totalFare = flight.fare * passengers.length;
+        const totalFare = (numAdults * flight.fare) + (numChildren * (flight.childFare || 0)) + (numInfants * (flight.infantFare || 0));
+
+        const isIntl = isInternational || flight.isInternational || false;
+
+        // DOB Validation
+        for (const pax of passengers) {
+            if (isIntl) {
+                if (!pax.dob) return res.status(400).json({ success: false, message: `DOB is mandatory for all international passengers (${pax.firstName} ${pax.lastName})` });
+            } else {
+                if ((pax.passengerType === 'Child' || pax.passengerType === 'Infant') && !pax.dob) {
+                    return res.status(400).json({ success: false, message: `DOB is mandatory for Child/Infant passengers (${pax.firstName} ${pax.lastName})` });
+                }
+            }
+        }
 
         if (agent.walletBalance < totalFare) {
             return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
@@ -314,11 +337,14 @@ const bookFlight = async (req, res) => {
         const booking = await FixedDepartureBooking.create({
             agentId: agent._id,
             flightId: flight._id,
+            adults: numAdults,
+            children: numChildren,
+            infants: numInfants,
             passengers: processedPassengers,
             totalFare,
             status: 'Pending',
             paymentVerified: false,
-            isInternational: isInternational || flight.isInternational || false
+            isInternational: isIntl
         });
 
         // Deduct Wallet
@@ -340,11 +366,10 @@ const bookFlight = async (req, res) => {
 
         // Send Email Confirmation to Agent & Admin
         const dateStr = new Date(flight.departureDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        const isIntl = isInternational || flight.isInternational;
         const passengerRows = processedPassengers.map(pax => `
             <tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 10px; border: 1px solid #eee;">${pax.firstName} ${pax.lastName}</td>
-                <td style="padding: 10px; border: 1px solid #eee;">${pax.dob} (${pax.age} yrs)</td>
+                <td style="padding: 10px; border: 1px solid #eee;">${pax.dob}</td>
                 <td style="padding: 10px; border: 1px solid #eee;">${pax.gender}</td>
                 <td style="padding: 10px; border: 1px solid #eee;">${pax.mobileNumber || 'N/A'}</td>
                 <td style="padding: 10px; border: 1px solid #eee;">${pax.email || 'N/A'}</td>
@@ -375,7 +400,7 @@ const bookFlight = async (req, res) => {
                     <thead style="background-color: #1D4171; color: white;">
                         <tr>
                             <th style="padding: 10px;">Name</th>
-                            <th style="padding: 10px;">DOB (Age)</th>
+                            <th style="padding: 10px;">DOB</th>
                             <th style="padding: 10px;">Gender</th>
                             <th style="padding: 10px;">Mobile</th>
                             <th style="padding: 10px;">Email</th>
@@ -434,7 +459,7 @@ const bookFlight = async (req, res) => {
                     <thead style="background-color: #1e293b; color: white;">
                         <tr>
                             <th style="padding: 10px;">Name</th>
-                            <th style="padding: 10px;">DOB (Age)</th>
+                            <th style="padding: 10px;">DOB</th>
                             <th style="padding: 10px;">Gender</th>
                             <th style="padding: 10px;">Mobile</th>
                             <th style="padding: 10px;">Email</th>

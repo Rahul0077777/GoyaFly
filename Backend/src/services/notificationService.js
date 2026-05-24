@@ -34,23 +34,46 @@ const sendOTBStatusUpdate = async (otbRequest) => {
     const { contactNo, email } = travelDetails;
 
     // Simulate SMS
-    const smsMessage = `Dear Customer, your OTB application ${receiptNumber} status has been updated to ${status}. ${adminNotes ? 'Remarks: ' + adminNotes : ''} - ZAYA TRAVELS`;
+    const smsMessage = `Dear Customer, your OTB application ${receiptNumber} status has been updated to ${status}. ${adminNotes ? 'Remarks: ' + adminNotes : ''} - GoyaFly`;
     logger.info(`[SMS MOCK] To: ${contactNo} | Message: ${smsMessage}`);
 
-    // Simulate Email
-    const emailSubject = `Update: OTB Application ${receiptNumber}`;
-    const emailBody = `
-        Hello,
-        
-        The status of your OK TO BOARD (OTB) application ${receiptNumber} has been updated.
-        
-        Current Status: ${status}
-        Remarks: ${adminNotes || 'None'}
-        
-        You can track your application status at: http://zayafly.com/otb/status
-        
-        Thank you for choosing ZAYA TRAVELS!
-    `;
+    let emailSubject;
+    let emailBody;
+
+    if (status === 'Approved') {
+        emailSubject = `OTB Document Uploaded - ${receiptNumber}`;
+        emailBody = `
+            <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <p>Dear Travel Partner,</p>
+                <p>This is to inform you that an OTB document has been uploaded for reference number <strong>${receiptNumber}</strong>.</p>
+                <p>Please find the attached document for your reference.</p>
+                <br />
+                <p>
+                    Thank you for giving us an opportunity to serve you. For updated information, log on to 
+                    <a href="https://goyafly.com" style="color: #2980b9; text-decoration: none;">https://goyafly.com</a>
+                </p>
+                <div style="margin-top: 30px;">
+                    <p style="margin: 0;">Regards,</p>
+                    <p style="margin: 0;">GoyaFly.com</p>
+                </div>
+            </div>
+        `;
+    } else {
+        emailSubject = `Update: OTB Application ${receiptNumber}`;
+        emailBody = `
+            Hello,
+            
+            The status of your OK TO BOARD (OTB) application ${receiptNumber} has been updated.
+            
+            Current Status: ${status}
+            Remarks: ${adminNotes || 'None'}
+            
+            You can track your application status at: https://goyafly.com/otb/status
+            
+            Thank you for choosing GoyaFly!
+        `;
+    }
+
     logger.info(`[EMAIL MOCK] To: ${email} | Subject: ${emailSubject} | Body: ${emailBody}`);
 
     // In a real scenario, you'd use nodemailer or an SMS API like Twilio/Msg91
@@ -60,7 +83,7 @@ const sendOTBStatusUpdate = async (otbRequest) => {
 const sendOTBAccessNotification = async (agent, status, adminNotes) => {
     const { emailAddress, agentName, mobileNumber } = agent;
 
-    const message = `Hello ${agentName}, your OTB lifetime access request has been ${status}. ${adminNotes ? 'Note: ' + adminNotes : ''} - ZAYA TRAVELS`;
+    const message = `Hello ${agentName}, your OTB lifetime access request has been ${status}. ${adminNotes ? 'Note: ' + adminNotes : ''} - GoyaFly`;
     
     logger.info(`[OTB ACCESS NOTIFICATION MOCK] To: ${emailAddress} / ${mobileNumber} | Status: ${status} | Message: ${message}`);
     return true;
@@ -116,11 +139,11 @@ const sendOTBConfirmation = async (otbRequest, agent) => {
         </table>
         <p>
             Thank you for giving us an opportunity to serve you. For updated information, log on to 
-            <a href="https://zayafly.com" style="color: #2980b9; text-decoration: none;"> https://zayafly.com </a>
+            <a href="https://goyafly.com" style="color: #2980b9; text-decoration: none;"> https://goyafly.com </a>
         </p>
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
             <p style="margin: 0; font-weight: bold;">Regards,</p>
-            <p style="margin: 0;">ZAYA TRAVELS Team</p>
+            <p style="margin: 0;">GoyaFly.com</p>
         </div>
     </div>
     `;

@@ -112,6 +112,25 @@ const OTBManager = () => {
         }
     };
 
+    const handleDownload = async (fileUrl, fileName) => {
+        try {
+            toast.info('Downloading document...');
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName || 'document';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Download failed', error);
+            toast.error('Failed to download document');
+        }
+    };
+
     // --- Pricing Handlers ---
     const handleOpenPricingModal = (item = null) => {
         if (item) {
@@ -366,21 +385,40 @@ const OTBManager = () => {
                             </h4>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-                                {Object.entries(selectedRequest.documents).map(([key, value]) => (
-                                    <a 
-                                        key={key} 
-                                        href={`${api.defaults.baseURL.replace('/api', '')}${value}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="p-4 border-2 border-dashed border-gray-100 rounded-2xl flex items-center justify-between hover:border-primary-300 hover:bg-primary-50 transition-all group"
-                                    >
-                                        <div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{key.replace(/([A-Z])/g, ' $1')}</p>
-                                            <p className="text-xs font-bold text-gray-600">Click to View</p>
+                                {Object.entries(selectedRequest.documents).map(([key, value]) => {
+                                    const fileUrl = `${api.defaults.baseURL.replace('/api', '')}${value}`;
+                                    const fileName = value.split('/').pop() || `${key}.pdf`;
+                                    return (
+                                        <div 
+                                            key={key} 
+                                            className="p-4 border-2 border-dashed border-gray-100 rounded-2xl flex flex-col gap-3 hover:border-primary-300 hover:bg-primary-50 transition-all group"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{key.replace(/([A-Z])/g, ' $1')}</p>
+                                                    <p className="text-xs font-bold text-gray-600 truncate max-w-[150px]">{fileName}</p>
+                                                </div>
+                                                <span className="text-xl group-hover:scale-110 transition-all">📄</span>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <a 
+                                                    href={fileUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="flex-1 text-center py-2 bg-white border border-gray-200 rounded-lg text-[10px] font-black uppercase text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
+                                                >
+                                                    View
+                                                </a>
+                                                <button 
+                                                    onClick={() => handleDownload(fileUrl, fileName)}
+                                                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-primary-50 border border-primary-100 rounded-lg text-[10px] font-black uppercase text-primary-600 hover:bg-primary-100 transition-all shadow-sm"
+                                                >
+                                                    <span>↓</span> Download
+                                                </button>
+                                            </div>
                                         </div>
-                                        <span className="text-xl group-hover:scale-125 transition-all">📄</span>
-                                    </a>
-                                ))}
+                                    );
+                                })}
                                 {Object.keys(selectedRequest.documents).length === 0 && (
                                     <p className="col-span-2 text-center py-6 bg-red-50 text-red-500 font-bold rounded-2xl border border-red-100">No documents uploaded with this request.</p>
                                 )}
