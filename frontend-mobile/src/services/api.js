@@ -647,6 +647,15 @@ export const otbService = {
         const url = `/otb/status/${receiptNumber}${contactNo ? `/${contactNo}` : ''}`;
         const response = await api.get(url);
         return response.data;
+    },
+    getPricing: async (isAdmin = false) => {
+        const url = isAdmin ? '/otb/admin/pricing' : '/otb/pricing';
+        const response = await api.get(url);
+        return response.data;
+    },
+    activateWithWallet: async () => {
+        const response = await api.post('/otb/subscription/wallet');
+        return response.data;
     }
 };
 
