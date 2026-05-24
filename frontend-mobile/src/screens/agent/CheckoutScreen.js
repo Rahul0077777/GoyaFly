@@ -177,18 +177,6 @@ export default function CheckoutScreen({ navigation, route }) {
         setPassengersList(l);
     };
 
-    const handleSeatSelect = (seat, paxIdx) => {
-        setSelectedSeats(prev => {
-            const newSeats = { ...prev };
-            // Remove seat if someone else has it
-            for (const key in newSeats) {
-                if (newSeats[key] === seat.code) delete newSeats[key];
-            }
-            newSeats[paxIdx] = seat.code;
-            return newSeats;
-        });
-    };
-
 
     const [isBooking, setIsBooking]       = useState(false);
     const [agentBalance, setAgentBalance] = useState(0);
@@ -334,9 +322,20 @@ export default function CheckoutScreen({ navigation, route }) {
             } catch {}
             finally { setLoadingBalance(false); }
         })();
-    }, []);
+    const handleSeatSelect = (seat, paxIdx) => {
+        setSelectedSeats(prev => {
+            const newSeats = { ...prev };
+            // Remove seat if someone else has it
+            for (const key in newSeats) {
+                if (newSeats[key] === seat.code) delete newSeats[key];
+            }
+            newSeats[paxIdx] = seat.code;
+            return newSeats;
+        });
+    };
 
     // ── Step 1 Validation ─────────────────────────────────────
+
     const handleProceedToAddons = async () => {
         if (!mobile || !email)
             return Toast.show({ type: 'error', text1: 'Required', text2: 'Please enter mobile number and email address.' });
@@ -879,7 +878,7 @@ export default function CheckoutScreen({ navigation, route }) {
                                 <LinearGradient 
                                     colors={['#1D4171', '#15305B']} 
                                     start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                                    className="absolute inset-0"
+                                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
                                 />
                                 <View className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 shadow-inner" />
                                 <Text className="text-[10px] font-black uppercase tracking-widest text-blue-200/60 mb-1.5">
@@ -1002,30 +1001,36 @@ export default function CheckoutScreen({ navigation, route }) {
                 <View className="p-5 bg-white border-t border-slate-100 shadow-2xl">
                     {step === 1 && (
                         <TouchableOpacity onPress={handleProceedToAddons} className="active:scale-95">
-                            <LinearGradient
-                                colors={['#1D4171', '#15305B']}
-                                start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#1D4171', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 }}
-                                className="rounded-2xl border border-b-[6px] border-[#0f2444]"
+                            <View
+                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#1D4171', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, overflow: 'hidden' }}
+                                className="rounded-2xl border border-b-[6px] border-[#0f2444] relative"
                             >
-                                <Text className="text-white font-black text-sm uppercase tracking-widest">
+                                <LinearGradient
+                                    colors={['#1D4171', '#15305B']}
+                                    start={{x: 0, y: 0}} end={{x: 1, y: 1}}
+                                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+                                />
+                                <Text className="text-white font-black text-sm uppercase tracking-widest relative z-10">
                                     Next: Select Add-ons →
                                 </Text>
-                            </LinearGradient>
+                            </View>
                         </TouchableOpacity>
                     )}
                     {step === 2 && (
                         <TouchableOpacity onPress={() => setStep(3)} className="active:scale-95">
-                            <LinearGradient
-                                colors={['#1D4171', '#15305B']}
-                                start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#1D4171', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 }}
-                                className="rounded-2xl border border-b-[6px] border-[#0f2444]"
+                            <View
+                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#1D4171', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, overflow: 'hidden' }}
+                                className="rounded-2xl border border-b-[6px] border-[#0f2444] relative"
                             >
-                                <Text className="text-white font-black text-sm uppercase tracking-widest">
+                                <LinearGradient
+                                    colors={['#1D4171', '#15305B']}
+                                    start={{x: 0, y: 0}} end={{x: 1, y: 1}}
+                                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+                                />
+                                <Text className="text-white font-black text-sm uppercase tracking-widest relative z-10">
                                     Next: Review & Pay →
                                 </Text>
-                            </LinearGradient>
+                            </View>
                         </TouchableOpacity>
                     )}
                     {step === 3 && (
@@ -1034,22 +1039,25 @@ export default function CheckoutScreen({ navigation, route }) {
                             disabled={!agreed || (!loadingBalance && agentBalance < requiredBalance)}
                             className="active:scale-95"
                         >
-                            <LinearGradient
-                                colors={
-                                    agreed && (loadingBalance || agentBalance >= requiredBalance)
-                                        ? ['#059669', '#047857']
-                                        : ['#cbd5e1', '#94a3b8']
-                                }
-                                start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#059669', shadowOffset: { width: 0, height: 8 }, shadowOpacity: agreed ? 0.3 : 0, shadowRadius: 16, elevation: agreed ? 8 : 0 }}
-                                className={`rounded-2xl border border-b-[6px] ${agreed && (loadingBalance || agentBalance >= requiredBalance) ? 'border-[#036247]' : 'border-slate-400'}`}
+                            <View
+                                style={{ paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#059669', shadowOffset: { width: 0, height: 8 }, shadowOpacity: agreed ? 0.3 : 0, shadowRadius: 16, elevation: agreed ? 8 : 0, overflow: 'hidden' }}
+                                className={`rounded-2xl border border-b-[6px] relative ${agreed && (loadingBalance || agentBalance >= requiredBalance) ? 'border-[#036247]' : 'border-slate-400'}`}
                             >
-                                <Text className="text-white font-black text-sm uppercase tracking-widest">
+                                <LinearGradient
+                                    colors={
+                                        agreed && (loadingBalance || agentBalance >= requiredBalance)
+                                            ? ['#059669', '#047857']
+                                            : ['#cbd5e1', '#94a3b8']
+                                    }
+                                    start={{x: 0, y: 0}} end={{x: 1, y: 1}}
+                                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+                                />
+                                <Text className="text-white font-black text-sm uppercase tracking-widest relative z-10">
                                     {!agreed
                                         ? 'Accept Policies to Confirm'
                                         : `Confirm & Pay ₹${requiredBalance.toLocaleString()}`}
                                 </Text>
-                            </LinearGradient>
+                            </View>
                         </TouchableOpacity>
                     )}
                 </View>
