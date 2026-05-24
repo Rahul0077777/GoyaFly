@@ -358,6 +358,24 @@ const verifyPriceController = async (req, res) => {
             result.currentNetfare = markedResults[0].netfare;
             result.adminMarkupApplied = markedResults[0].adminMarkupApplied || 0;
 
+            // Recalculate verified status and warning using marked currentNetfare vs marked originalNetfare
+            const originalNetfareVal = parseFloat(originalNetfare) || 0;
+            const fareDiff = result.currentNetfare - originalNetfareVal;
+            result.verified = (fareDiff === 0);
+            result.warning = !result.verified
+                ? (fareDiff > 0
+                    ? `⚠️ Price increased by ₹${fareDiff.toFixed(2)}. Original: ₹${originalNetfareVal}, Current: ₹${result.currentNetfare}.`
+                    : `ℹ️ Price decreased by ₹${Math.abs(fareDiff).toFixed(2)}. Original: ₹${originalNetfareVal}, Current: ₹${result.currentNetfare}.`)
+                : null;
+
+            // In GDS Test Mode (Mode 0), bypass price warnings by setting verified price to match search price
+            if (process.env.FTD_MODE === '0') {
+                result.currentNetfare = originalNetfareVal || result.currentNetfare;
+                result.verified = true;
+                result.warning = null;
+                logger.info(`[GDS TEST MODE] Price Verification bypassed. Forcing verified price to search fare: ₹${result.currentNetfare}`);
+            }
+
             // Extract SSR Info for frontend (FTD nests this under result.ssrInfo)
             result.ssrInfo = ftdData.result?.ssrInfo || ftdData.result?.SSR || ftdData.ssrInfo || ftdData.SSR || null;
             

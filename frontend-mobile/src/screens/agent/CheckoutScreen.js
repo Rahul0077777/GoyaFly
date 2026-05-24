@@ -177,6 +177,19 @@ export default function CheckoutScreen({ navigation, route }) {
         setPassengersList(l);
     };
 
+    const handleSeatSelect = (seat, paxIdx) => {
+        setSelectedSeats(prev => {
+            const newSeats = { ...prev };
+            // Remove seat if someone else has it
+            for (const key in newSeats) {
+                if (newSeats[key] === seat.code) delete newSeats[key];
+            }
+            newSeats[paxIdx] = seat.code;
+            return newSeats;
+        });
+    };
+
+
     const [isBooking, setIsBooking]       = useState(false);
     const [agentBalance, setAgentBalance] = useState(0);
     const [loadingBalance, setLoadingBalance] = useState(true);
@@ -190,13 +203,123 @@ export default function CheckoutScreen({ navigation, route }) {
     // SSR (Step 2)
     const [loadingSSR, setLoadingSSR]     = useState(false);
     const [seatMap, setSeatMap]           = useState(null);
-    const [selectedSeats, setSelectedSeats] = useState({});
-    const [selectedMeals, setSelectedMeals] = useState({});
+    const [selectedSeats, setSelectedSeats] = useState({}); // { paxIdx: seatCode }
+    const [selectedMeals, setSelectedMeals] = useState({}); // { paxIdx: mealCode }
+    const [selectedBaggage, setSelectedBaggage] = useState({}); // { paxIdx: baggageCode }
+    const [showSeatMapModal, setShowSeatMapModal] = useState(false);
+    const [activePaxIdxForSeat, setActivePaxIdxForSeat] = useState(0);
+    const [mealPickerVisible, setMealPickerVisible] = useState(false);
+    const [baggagePickerVisible, setBaggagePickerVisible] = useState(false);
+    const [activePaxIdxForSSR, setActivePaxIdxForSSR] = useState(0);
 
     const validationFlags = bookingData?.details?.validationFlags || {};
     const finalPrice   = bookingData?.markupPrice || bookingData?.baseFare || 0;
     const netfare      = bookingData?.baseFare    || bookingData?.details?.netfare || 0;
-    const requiredBalance = finalPrice;
+
+    // Safely extract SSR arrays in case they are wrapped in Onward
+    const availableMeals = bookingData?.details?.ssrInfo?.Meal || 
+                           bookingData?.details?.ssrInfo?.Onward?.Meal || 
+                           bookingData?.details?.ssrInfo?.onward?.Meal || [];
+    const availableBaggage = bookingData?.details?.ssrInfo?.Baggage || 
+                             bookingData?.details?.ssrInfo?.Bagg || 
+                             bookingData?.details?.ssrInfo?.Onward?.Baggage || 
+                             bookingData?.details?.ssrInfo?.Onward?.Bagg || 
+                             bookingData?.details?.ssrInfo?.onward?.Baggage || 
+                             bookingData?.details?.ssrInfo?.onward?.Bagg || [];
+
+    const mealOptions = [
+        { label: 'No Preference (Free)', value: '' },
+        ...availableMeals.map(m => ({
+            label: `${m.desc || m.mealDesc || m.code} (+₹${m.amount || m.mealAmt || 0})`,
+            value: m.code || m.mealID
+        }))
+    ];
+
+    const baggageOptions = [
+        { label: 'No Extra Baggage', value: '' },
+        ...availableBaggage.map(b => ({
+            label: `${b.desc || b.baggDesc || b.code} (+₹${b.amount || b.baggAmt || 0})`,
+            value: b.code || b.baggID
+        }))
+    ];
+
+
+    // Normalization helper for seat map
+    const normalizeSeats = (data) => {
+        if (!data) return [];
+        let seatsArray = [];
+        if (Array.isArray(data)) seatsArray = data;
+        else if (data.FlightSeat?.Onward?.[0]?.SeatMap) seatsArray = data.FlightSeat.Onward[0].SeatMap;
+        else if (data.FlightSeat?.Onward?.[0]?.seatMap) seatsArray = data.FlightSeat.Onward[0].seatMap;
+        else if (data.seats && Array.isArray(data.seats)) seatsArray = data.seats;
+        else if (data.Seats && Array.isArray(data.Seats)) seatsArray = data.Seats;
+        else if (data.data && Array.isArray(data.data)) seatsArray = data.data;
+        else if (data.results && Array.isArray(data.results)) seatsArray = data.results;
+        else if (data.Onward?.row && Array.isArray(data.Onward.row)) seatsArray = data.Onward.row;
+        else if (data.Onward?.seats && Array.isArray(data.Onward.seats)) seatsArray = data.Onward.seats;
+        
+        if (seatsArray.length > 0 && seatsArray[0].seats) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.seats && Array.isArray(r.seats)) {
+                    flat.push(...r.seats);
+                }
+            });
+            seatsArray = flat;
+        } else if (seatsArray.length > 0 && seatsArray[0].Seat) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.Seat && Array.isArray(r.Seat)) {
+                    flat.push(...r.Seat);
+                }
+            });
+            seatsArray = flat;
+        } else if (seatsArray.length > 0 && seatsArray[0].row) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.row && Array.isArray(r.row)) {
+                    flat.push(...r.row);
+                }
+            });
+            seatsArray = flat;
+        }
+        
+        return seatsArray.map(s => {
+            if (typeof s === 'string') return { code: s, amount: 0, status: 'available' };
+            const code = s.code || s.seatNo || s.seatID || s.seatName;
+            return {
+                ...s,
+                code,
+                seatNo: code,
+                amount: parseFloat(s.amount || s.seatAmount || s.seatAmt || 0),
+                status: (s.status === 'unavailable' || s.isBooked === true || s.isBooked === 'true' || s.isBooked === '1' || s.seatAvailable === false) ? 'unavailable' : 'available'
+            };
+        });
+    };
+
+    const seatsListNormalized = normalizeSeats(seatMap);
+
+    // Calculate total SSR costs
+    const seatCost = Object.values(selectedSeats).reduce((sum, seatCode) => {
+        if (!seatCode) return sum;
+        const seatObj = seatsListNormalized.find(s => s.code === seatCode);
+        return sum + (seatObj?.amount || 0);
+    }, 0);
+
+    const mealCost = Object.values(selectedMeals).reduce((sum, mealCode) => {
+        if (!mealCode) return sum;
+        const mealObj = availableMeals.find(m => (m.code || m.mealID) === mealCode);
+        return sum + parseFloat(mealObj?.amount || mealObj?.mealAmt || 0);
+    }, 0);
+
+    const baggageCost = Object.values(selectedBaggage).reduce((sum, bagCode) => {
+        if (!bagCode) return sum;
+        const bagObj = availableBaggage.find(b => (b.code || b.baggID) === bagCode);
+        return sum + parseFloat(bagObj?.amount || bagObj?.baggAmt || 0);
+    }, 0);
+
+    const totalSsrCost = seatCost + mealCost + baggageCost;
+    const requiredBalance = finalPrice + totalSsrCost;
 
     // Fetch wallet balance on mount
     useEffect(() => {
@@ -318,19 +441,29 @@ export default function CheckoutScreen({ navigation, route }) {
                 };
 
                 // ── SSR (Section 9): Baggage.Onward structure with dynamic amounts ──
-                const selectedSeat = selectedSeats[idx];
-                const selectedMeal = selectedMeals[idx];
-                if (selectedSeat || selectedMeal) {
+                const selectedSeatCode = selectedSeats[idx];
+                const selectedMealCode = selectedMeals[idx];
+                const selectedBagCode = selectedBaggage[idx];
+                
+                if (selectedSeatCode || selectedMealCode || selectedBagCode) {
+                    const seatObj = seatsListNormalized.find(s => s.code === selectedSeatCode);
+                    const mealObj = availableMeals.find(m => (m.code || m.mealID) === selectedMealCode);
+                    const bagObj = availableBaggage.find(b => (b.code || b.baggID) === selectedBagCode);
+
                     paxObj.Baggage = {
                         Onward: {
-                            ...(selectedSeat ? { 
-                                seat_no: selectedSeat.seatNo || selectedSeat.code || selectedSeat, 
-                                seat_amount: String(selectedSeat.seatAmount || selectedSeat.amount || '0') 
+                            ...(selectedSeatCode ? { 
+                                seat_no: selectedSeatCode, 
+                                seat_amount: String(seatObj?.amount || '0') 
                             } : {}),
-                            ...(selectedMeal ? { 
-                                meal: selectedMeal.code || selectedMeal.mealCode || selectedMeal, 
-                                meal_amount: String(selectedMeal.mealAmount || selectedMeal.amount || '0') 
+                            ...(mealObj ? { 
+                                meal: mealObj.code || mealObj.mealID, 
+                                meal_amount: String(mealObj.amount || mealObj.mealAmt || '0') 
                             } : {}),
+                            ...(bagObj ? {
+                                baggage: bagObj.code || bagObj.baggID,
+                                baggage_amount: String(bagObj.amount || bagObj.baggAmt || '0')
+                            } : {})
                         }
                     };
                 }
@@ -474,12 +607,12 @@ export default function CheckoutScreen({ navigation, route }) {
                                         />
                                     </View>
 
-                                    {/* PAN — lead passenger only */}
-                                    {idx === 0 && (
+                                    {/* PAN — lead passenger only and only if mandatory per GDS validation flags */}
+                                    {idx === 0 && (validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) && (
                                         <View className="border-t border-slate-100 pt-4 mt-2">
                                             <Field
                                                 t={t}
-                                                label={`PAN Number ${(validationFlags.pan_mandatory === 1 || validationFlags.isPanMandatory === 1) ? '(Mandatory)' : '(Recommended)'}`}
+                                                label="PAN Number (Mandatory) *"
                                                 value={pan}
                                                 onChangeText={v => setPan(v.toUpperCase())}
                                                 autoCapitalize="characters"
@@ -622,10 +755,10 @@ export default function CheckoutScreen({ navigation, route }) {
                                 <View>
                                     <View className="bg-blue-50 border border-blue-100 border-b-4 border-b-blue-200 p-4 rounded-2xl mb-6 shadow-sm">
                                         <Text className="text-blue-700 font-black text-[10px] uppercase tracking-wider leading-relaxed">
-                                            ℹ️ Seat & Meal selection is optional. Charges are added to final price.
+                                            ℹ️ Seat, Meal, and Baggage selection is optional. Charges are added to final price.
                                         </Text>
                                     </View>
-
+ 
                                     {passengersList.map((p, idx) => (
                                         <View
                                             key={idx}
@@ -645,82 +778,84 @@ export default function CheckoutScreen({ navigation, route }) {
                                                     </Text>
                                                 </View>
                                             </View>
-
-                                            {/* Seat Selection */}
-                                            <Text className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">
-                                                Preferred Seat (Optional)
-                                            </Text>
-                                            {seatList.length > 0 ? (
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 pb-2">
-                                                    <View className="flex-row gap-2.5">
+ 
+                                            {/* Seat Selection Button */}
+                                            <View className="mb-6">
+                                                <Text className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">
+                                                    Preferred Seat (Optional)
+                                                </Text>
+                                                {selectedSeats[idx] ? (
+                                                    <View className="flex-row items-center justify-between bg-emerald-50 border border-emerald-200 p-4 rounded-2xl shadow-inner">
+                                                        <Text className="font-black text-emerald-700 text-sm">
+                                                            Seat: {selectedSeats[idx]}
+                                                        </Text>
                                                         <TouchableOpacity
-                                                            onPress={() => setSelectedSeats(prev => ({ ...prev, [idx]: null }))}
-                                                            className={`w-16 py-3.5 rounded-2xl border items-center active:scale-95 ${!selectedSeats[idx] ? 'bg-slate-800 border-slate-800 border-b-4 border-slate-900 shadow-sm' : 'bg-white border-slate-100 border-b-4 border-slate-200 shadow-sm'}`}
+                                                            onPress={() => setSelectedSeats(prev => { const n = { ...prev }; delete n[idx]; return n; })}
+                                                            className="w-8 h-8 rounded-full bg-emerald-100 items-center justify-center"
                                                         >
-                                                            <Text className={`font-black text-xs tracking-wider ${!selectedSeats[idx] ? 'text-white' : 'text-slate-500'}`}>
-                                                                None
-                                                            </Text>
+                                                            <Ionicons name="close" size={16} color="#047857" />
                                                         </TouchableOpacity>
-                                                        {seatList.map(seat => (
-                                                            <TouchableOpacity
-                                                                key={seat.seatNo}
-                                                                onPress={() => setSelectedSeats(prev => ({ ...prev, [idx]: seat }))}
-                                                                className={`w-16 py-3.5 rounded-2xl border items-center active:scale-95 ${selectedSeats[idx]?.seatNo === seat.seatNo ? 'bg-[#1D4171] border-[#1D4171] border-b-4 border-[#15305B] shadow-sm' : 'bg-white border-slate-100 border-b-4 border-slate-200 shadow-sm'}`}
-                                                            >
-                                                                <Text className={`font-black text-xs tracking-wider ${selectedSeats[idx]?.seatNo === seat.seatNo ? 'text-white' : 'text-slate-600'}`}>
-                                                                    {seat.seatNo}
-                                                                </Text>
-                                                                {(seat.seatAmount || seat.amount) > 0 && (
-                                                                    <Text className={`text-[8px] font-bold mt-1 tracking-wider ${selectedSeats[idx]?.seatNo === seat.seatNo ? 'text-blue-200' : 'text-slate-400'}`}>₹{seat.seatAmount || seat.amount}</Text>
-                                                                )}
-                                                            </TouchableOpacity>
-                                                        ))}
                                                     </View>
-                                                </ScrollView>
-                                            ) : (
-                                                <View className="bg-slate-50 rounded-2xl p-4 mb-6 items-center border border-slate-100 shadow-inner">
-                                                    <Text className="text-slate-400 font-bold text-xs tracking-wider">
-                                                        Seat map not available for this flight.
+                                                ) : (
+                                                    <TouchableOpacity
+                                                        onPress={() => { setActivePaxIdxForSeat(idx); setShowSeatMapModal(true); }}
+                                                        className="w-full border-2 border-slate-200 border-dashed rounded-2xl py-4 items-center justify-center active:scale-95"
+                                                    >
+                                                        <Text className="font-black text-slate-500 text-xs uppercase tracking-widest">
+                                                            + Select Seat
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+ 
+                                            {/* Meal Selection Button */}
+                                            <View className="mb-6">
+                                                <Text className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">
+                                                    Meal Option (Optional)
+                                                </Text>
+                                                <TouchableOpacity
+                                                    onPress={() => { setActivePaxIdxForSSR(idx); setMealPickerVisible(true); }}
+                                                    className="w-full bg-slate-50 rounded-2xl p-4 border border-slate-100 flex-row justify-between items-center shadow-inner active:scale-95"
+                                                >
+                                                    <Text className="font-black text-slate-800 text-sm">
+                                                        {selectedMeals[idx]
+                                                            ? (availableMeals.find(m => (m.code || m.mealID) === selectedMeals[idx])?.desc || 
+                                                               availableMeals.find(m => (m.code || m.mealID) === selectedMeals[idx])?.mealDesc || 
+                                                               selectedMeals[idx])
+                                                            : 'No Preference (Free)'}
                                                     </Text>
+                                                    <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                                                </TouchableOpacity>
+                                            </View>
+
+                                            {/* Baggage Selection Button */}
+                                            {availableBaggage.length > 0 && (
+                                                <View className="mb-2">
+                                                    <Text className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">
+                                                        Extra Baggage (Optional)
+                                                    </Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => { setActivePaxIdxForSSR(idx); setBaggagePickerVisible(true); }}
+                                                        className="w-full bg-slate-50 rounded-2xl p-4 border border-slate-100 flex-row justify-between items-center shadow-inner active:scale-95"
+                                                    >
+                                                        <Text className="font-black text-slate-800 text-sm">
+                                                            {selectedBaggage[idx]
+                                                                ? (availableBaggage.find(b => (b.code || b.baggID) === selectedBaggage[idx])?.desc || 
+                                                                   availableBaggage.find(b => (b.code || b.baggID) === selectedBaggage[idx])?.baggDesc || 
+                                                                   selectedBaggage[idx])
+                                                                : 'No Extra Baggage'}
+                                                        </Text>
+                                                        <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                                                    </TouchableOpacity>
                                                 </View>
                                             )}
-
-                                            {/* Meal Selection */}
-                                            <Text className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">
-                                                Meal Option (Optional)
-                                            </Text>
-                                            <View className="flex-row flex-wrap gap-2.5">
-                                                {[{ code: '', name: 'No Preference' }, ...ssrMeals].map(meal => {
-                                                    const mealCode = meal.code ?? meal.mealCode ?? '';
-                                                    const mealName = meal.name ?? meal.mealDesc ?? mealCode;
-                                                    const mealAmount = meal.mealAmount ?? meal.amount ?? 0;
-                                                    const isSelected = selectedMeals[idx]?.code === mealCode ||
-                                                                       (!selectedMeals[idx] && !mealCode);
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={mealCode || 'none'}
-                                                            onPress={() => setSelectedMeals(prev => ({ ...prev, [idx]: meal }))}
-                                                            className={`px-4 py-3 rounded-2xl border active:scale-95 ${isSelected ? 'bg-[#F07E21] border-[#F07E21] border-b-4 border-[#D96B18] shadow-sm' : 'bg-white border-slate-100 border-b-4 border-slate-200 shadow-sm'}`}
-                                                        >
-                                                            <View className="items-center">
-                                                                <Text className={`font-black text-xs tracking-wider ${isSelected ? 'text-white' : 'text-slate-600'}`}>
-                                                                    {mealName}
-                                                                </Text>
-                                                                {mealAmount > 0 && (
-                                                                    <Text className={`text-[9px] font-bold mt-0.5 tracking-wider ${isSelected ? 'text-orange-100' : 'text-slate-400'}`}>₹{mealAmount}</Text>
-                                                                )}
-                                                            </View>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
                                         </View>
                                     ))}
                                 </View>
                             )}
                         </View>
                     )}
-
+ 
                     {/* ═══════════════════════════════════════════════════
                         STEP 3 – REVIEW & PAY
                     ═══════════════════════════════════════════════════ */}
@@ -738,7 +873,7 @@ export default function CheckoutScreen({ navigation, route }) {
                                     </Text>
                                 </View>
                             </View>
-
+ 
                             {/* Premium 3D Price Summary */}
                             <View className="p-8 rounded-[2.5rem] shadow-2xl mb-6 overflow-hidden border border-blue-400/20" style={{ backgroundColor: '#1D4171', elevation: 12 }}>
                                 <LinearGradient 
@@ -751,8 +886,37 @@ export default function CheckoutScreen({ navigation, route }) {
                                     Total Amount
                                 </Text>
                                 <Text className="text-4xl font-black text-white mb-6">
-                                    ₹{finalPrice.toLocaleString()}
+                                    ₹{requiredBalance.toLocaleString()}
                                 </Text>
+
+                                {/* Dynamic SSR breakdown in Step 3 */}
+                                {totalSsrCost > 0 && (
+                                    <View className="mb-6 bg-white/10 p-4 rounded-2xl border border-white/10">
+                                        <View className="flex-row justify-between mb-2">
+                                            <Text className="text-white/60 text-xs font-bold uppercase">Flight Base</Text>
+                                            <Text className="text-white text-xs font-black">₹{finalPrice.toLocaleString()}</Text>
+                                        </View>
+                                        {seatCost > 0 && (
+                                            <View className="flex-row justify-between mb-2">
+                                                <Text className="text-white/60 text-xs font-bold uppercase">Seats Fee</Text>
+                                                <Text className="text-white text-xs font-black">₹{seatCost.toLocaleString()}</Text>
+                                            </View>
+                                        )}
+                                        {mealCost > 0 && (
+                                            <View className="flex-row justify-between mb-2">
+                                                <Text className="text-white/60 text-xs font-bold uppercase">Meals Fee</Text>
+                                                <Text className="text-white text-xs font-black">₹{mealCost.toLocaleString()}</Text>
+                                            </View>
+                                        )}
+                                        {baggageCost > 0 && (
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-white/60 text-xs font-bold uppercase">Baggage Fee</Text>
+                                                <Text className="text-white text-xs font-black">₹{baggageCost.toLocaleString()}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
                                 <View className="flex-row justify-between items-center border-t border-white/10 pt-4">
                                     <Text className="text-white font-bold opacity-70 text-xs">Wallet Balance</Text>
                                     <Text className={`font-black text-lg tracking-wider ${loadingBalance ? 'text-white/50' : agentBalance < requiredBalance ? 'text-red-300' : 'text-emerald-300'}`}>
@@ -772,7 +936,7 @@ export default function CheckoutScreen({ navigation, route }) {
                                     </View>
                                 )}
                             </View>
-
+ 
                             {/* Flight Summary - 3D Card */}
                             <View className="bg-white p-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 mb-6" style={{ elevation: 8 }}>
                                 <SectionHeader title="Flight Summary" accent="#1D4171" />
@@ -793,7 +957,7 @@ export default function CheckoutScreen({ navigation, route }) {
                                     </View>
                                 ) : null)}
                             </View>
-
+ 
                             {/* Passenger Review - 3D Card */}
                             <View className="bg-white p-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 mb-6" style={{ elevation: 8 }}>
                                 <SectionHeader title="Passenger Review" accent="#F07E21" />
@@ -809,8 +973,9 @@ export default function CheckoutScreen({ navigation, route }) {
                                         </View>
                                         <Text className="text-slate-500 text-[10px] font-bold leading-relaxed">
                                             DOB: {formatDateFTD(p.dob) || '—'}
-                                            {selectedSeats[idx] ? ` · Seat: ${selectedSeats[idx]?.seatNo || selectedSeats[idx]?.code || typeof selectedSeats[idx] === 'string' ? selectedSeats[idx] : ''}` : ''}
-                                            {selectedMeals[idx] ? ` · Meal: ${selectedMeals[idx]?.name || selectedMeals[idx]?.mealDesc || selectedMeals[idx]?.code || typeof selectedMeals[idx] === 'string' ? selectedMeals[idx] : ''}` : ''}
+                                            {selectedSeats[idx] ? ` · Seat: ${selectedSeats[idx]}` : ''}
+                                            {selectedMeals[idx] ? ` · Meal: ${selectedMeals[idx]}` : ''}
+                                            {selectedBaggage[idx] ? ` · Baggage: ${selectedBaggage[idx]}` : ''}
                                         </Text>
                                     </View>
                                 ))}
@@ -882,13 +1047,300 @@ export default function CheckoutScreen({ navigation, route }) {
                                 <Text className="text-white font-black text-sm uppercase tracking-widest">
                                     {!agreed
                                         ? 'Accept Policies to Confirm'
-                                        : `Confirm & Pay ₹${finalPrice.toLocaleString()}`}
+                                        : `Confirm & Pay ₹${requiredBalance.toLocaleString()}`}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     )}
                 </View>
             </SafeAreaView>
+
+            {/* Visual Airplane Seat Selection Modal */}
+            <SeatMapModal
+                visible={showSeatMapModal}
+                onClose={() => setShowSeatMapModal(false)}
+                seatMapData={seatMap}
+                passengers={passengersList}
+                selectedSeats={selectedSeats}
+                activePaxIdx={activePaxIdxForSeat}
+                onSeatSelect={handleSeatSelect}
+            />
+
+            {/* Meal Option Bottom Sheet Picker */}
+            <BottomSheetPicker
+                visible={mealPickerVisible}
+                onClose={() => setMealPickerVisible(false)}
+                title="Select Meal Option"
+                options={mealOptions}
+                selectedValue={selectedMeals[activePaxIdxForSSR] || ''}
+                onSelect={(val) => setSelectedMeals(prev => ({ ...prev, [activePaxIdxForSSR]: val }))}
+            />
+
+            {/* Baggage Option Bottom Sheet Picker */}
+            <BottomSheetPicker
+                visible={baggagePickerVisible}
+                onClose={() => setBaggagePickerVisible(false)}
+                title="Select Extra Baggage"
+                options={baggageOptions}
+                selectedValue={selectedBaggage[activePaxIdxForSSR] || ''}
+                onSelect={(val) => setSelectedBaggage(prev => ({ ...prev, [activePaxIdxForSSR]: val }))}
+            />
         </View>
     );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Reusable Bottom Sheet Selection Modal Component
+// ─────────────────────────────────────────────────────────────
+const BottomSheetPicker = ({ visible, onClose, title, options, selectedValue, onSelect }) => (
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+        <View className="flex-1 justify-end bg-black/50">
+            <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />
+            <View className="bg-white rounded-t-[2.5rem] p-6 max-h-[70%] border border-slate-100 shadow-2xl">
+                <View className="flex-row justify-between items-center mb-6">
+                    <Text className="text-xl font-black text-slate-800 uppercase tracking-tight">{title}</Text>
+                    <TouchableOpacity onPress={onClose} className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center">
+                        <Ionicons name="close" size={20} color="#1D4171" />
+                    </TouchableOpacity>
+                </View>
+                <ScrollView className="mb-4" showsVerticalScrollIndicator={false}>
+                    {options.map((opt) => {
+                        const isSelected = selectedValue === opt.value;
+                        return (
+                            <TouchableOpacity
+                                key={opt.value}
+                                onPress={() => { onSelect(opt.value); onClose(); }}
+                                className={`flex-row justify-between items-center p-4 mb-3 rounded-2xl border transition-all ${isSelected ? 'bg-slate-50 border-emerald-500' : 'bg-white border-slate-100'}`}
+                            >
+                                <Text className={`font-black text-sm ${isSelected ? 'text-emerald-700' : 'text-slate-700'}`}>{opt.label}</Text>
+                                {isSelected && <Ionicons name="checkmark-circle" size={20} color="#10b981" />}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+        </View>
+    </Modal>
+);
+
+// ─────────────────────────────────────────────────────────────
+// Visual Airplane Seat Map Selection Modal Component
+// ─────────────────────────────────────────────────────────────
+const SeatMapModal = ({ visible, onClose, seatMapData, passengers, selectedSeats, activePaxIdx, onSeatSelect }) => {
+    // Normalization helper
+    const normalizeSeats = (data) => {
+        if (!data) return [];
+        let seatsArray = [];
+        if (Array.isArray(data)) seatsArray = data;
+        else if (data.FlightSeat?.Onward?.[0]?.SeatMap) seatsArray = data.FlightSeat.Onward[0].SeatMap;
+        else if (data.FlightSeat?.Onward?.[0]?.seatMap) seatsArray = data.FlightSeat.Onward[0].seatMap;
+        else if (data.seats && Array.isArray(data.seats)) seatsArray = data.seats;
+        else if (data.Seats && Array.isArray(data.Seats)) seatsArray = data.Seats;
+        else if (data.data && Array.isArray(data.data)) seatsArray = data.data;
+        else if (data.results && Array.isArray(data.results)) seatsArray = data.results;
+        else if (data.Onward?.row && Array.isArray(data.Onward.row)) seatsArray = data.Onward.row;
+        else if (data.Onward?.seats && Array.isArray(data.Onward.seats)) seatsArray = data.Onward.seats;
+        
+        if (seatsArray.length > 0 && seatsArray[0].seats) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.seats && Array.isArray(r.seats)) flat.push(...r.seats);
+            });
+            seatsArray = flat;
+        } else if (seatsArray.length > 0 && seatsArray[0].Seat) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.Seat && Array.isArray(r.Seat)) flat.push(...r.Seat);
+            });
+            seatsArray = flat;
+        } else if (seatsArray.length > 0 && seatsArray[0].row) {
+            const flat = [];
+            seatsArray.forEach(r => {
+                if (r.row && Array.isArray(r.row)) flat.push(...r.row);
+            });
+            seatsArray = flat;
+        }
+        
+        return seatsArray.map(s => {
+            if (typeof s === 'string') return { code: s, amount: 0, status: 'available' };
+            const code = s.code || s.seatNo || s.seatID || s.seatName;
+            return {
+                ...s,
+                code,
+                seatNo: code,
+                amount: parseFloat(s.amount || s.seatAmount || s.seatAmt || 0),
+                status: (s.status === 'unavailable' || s.isBooked === true || s.isBooked === 'true' || s.isBooked === '1' || s.seatAvailable === false) ? 'unavailable' : 'available'
+            };
+        });
+    };
+
+    const seatsList = normalizeSeats(seatMapData);
+    const rows = {};
+    seatsList.forEach(seat => {
+        if (!seat.code) return;
+        const rowNum = seat.code.match(/\d+/)?.[0] || '1';
+        if (!rows[rowNum]) rows[rowNum] = [];
+        rows[rowNum].push(seat);
+    });
+
+    const getSelectedPaxIndex = (seatCode) => {
+        for (const [paxIdx, code] of Object.entries(selectedSeats)) {
+            if (code === seatCode) return parseInt(paxIdx);
+        }
+        return -1;
+    };
+
+    return (
+        <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+            <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
+                {/* Header */}
+                <View className="px-5 py-4 flex-row items-center justify-between bg-white border-b border-slate-100 shadow-sm">
+                    <View>
+                        <Text className="text-xl font-black text-slate-800">Select Seat</Text>
+                        <Text className="text-slate-400 font-bold uppercase text-[9px] tracking-widest mt-0.5">
+                            Passenger {activePaxIdx + 1}: {passengers[activePaxIdx]?.firstName || 'PAX'}
+                        </Text>
+                    </View>
+                    <TouchableOpacity onPress={onClose} className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center active:scale-95">
+                        <Ionicons name="close" size={20} color="#1D4171" />
+                    </TouchableOpacity>
+                </View>
+
+                <View className="flex-1 flex-row">
+                    {/* Left: Passenger Selection List */}
+                    <View className="w-1/3 border-r border-slate-200 bg-white p-4">
+                        <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Travellers</Text>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {passengers.map((p, idx) => {
+                                const isAssigned = selectedSeats[idx];
+                                const isActive = activePaxIdx === idx;
+                                return (
+                                    <View
+                                        key={idx}
+                                        className={`p-3 rounded-xl border mb-3 ${isActive ? 'bg-[#1D4171] border-[#1D4171] border-b-4 border-[#15305B]' : isAssigned ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}
+                                    >
+                                        <Text className={`font-black text-xs uppercase ${isActive ? 'text-white' : 'text-slate-700'}`} numberOfLines={1}>
+                                            {p.firstName || `Pax ${idx + 1}`}
+                                        </Text>
+                                        <Text className={`text-[8px] font-bold uppercase mt-1 ${isActive ? 'text-blue-200' : isAssigned ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {isAssigned ? `Seat ${isAssigned}` : 'No Seat'}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+                        
+                        {/* Legend */}
+                        <View className="mt-4 pt-4 border-t border-slate-200">
+                            <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Legend</Text>
+                            <View className="gap-2.5">
+                                <View className="flex-row items-center"><View className="w-4 h-4 rounded bg-white border border-slate-300 mr-2" /><Text className="text-[9px] font-bold text-slate-600 uppercase">Avail</Text></View>
+                                <View className="flex-row items-center"><View className="w-4 h-4 rounded bg-emerald-500 border border-emerald-600 mr-2" /><Text className="text-[9px] font-bold text-slate-600 uppercase">Selected</Text></View>
+                                <View className="flex-row items-center"><View className="w-4 h-4 rounded bg-slate-200 border border-slate-300 opacity-50 mr-2" /><Text className="text-[9px] font-bold text-slate-600 uppercase">Occupied</Text></View>
+                                <View className="flex-row items-center"><View className="w-4 h-4 rounded bg-blue-50 border border-blue-200 mr-2 items-center justify-center"><Text className="text-[6px] font-black text-blue-600">₹</Text></View><Text className="text-[9px] font-bold text-slate-600 uppercase">Paid</Text></View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Right: Scrollable airplane visual seat grid */}
+                    <View className="w-2/3 p-4 items-center justify-center bg-slate-100">
+                        <ScrollView className="w-full" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+                            <View className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm relative w-full">
+                                <View className="items-center gap-3">
+                                    {Object.keys(rows).sort((a,b) => parseInt(a)-parseInt(b)).map(rowNum => (
+                                        <View key={rowNum} className="flex-row justify-between items-center w-full">
+                                            {/* Left columns A, B, C */}
+                                            <View className="flex-row gap-1.5 w-[42%] justify-end">
+                                                {rows[rowNum].filter(s => ['A','B','C'].some(ltr => s.code.includes(ltr))).map(seat => {
+                                                    const paxIdx = getSelectedPaxIndex(seat.code);
+                                                    const isSelected = paxIdx !== -1;
+                                                    const isUnavailable = seat.status === 'unavailable';
+                                                    const hasPrice = seat.amount > 0;
+                                                    
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={seat.code}
+                                                            disabled={isUnavailable}
+                                                            onPress={() => onSeatSelect(seat, activePaxIdx)}
+                                                            className={`relative w-8 h-8 rounded-lg items-center justify-center border
+                                                                ${isUnavailable ? 'bg-slate-200 border-slate-300 opacity-50' : 
+                                                                  isSelected ? 'bg-emerald-500 border-emerald-600' : 
+                                                                  hasPrice ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}
+                                                        >
+                                                            <Text className={`text-[9px] font-black
+                                                                ${isUnavailable ? 'text-slate-400' : 
+                                                                  isSelected ? 'text-white' : 
+                                                                  hasPrice ? 'text-blue-700' : 'text-slate-600'}`}>
+                                                                {isSelected ? (paxIdx + 1) : seat.code.replace(/\d+/,'')}
+                                                            </Text>
+                                                            {!isSelected && hasPrice && !isUnavailable && (
+                                                                <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full items-center justify-center">
+                                                                    <Text className="text-[5px] text-white font-black">₹</Text>
+                                                                </View>
+                                                            )}
+                                                        </TouchableOpacity>
+                                                    )
+                                                })}
+                                            </View>
+                                            
+                                            {/* Row Number */}
+                                            <View className="w-[16%] items-center">
+                                                <Text className="text-[9px] font-black text-slate-300">{rowNum}</Text>
+                                            </View>
+
+                                            {/* Right columns D, E, F */}
+                                            <View className="flex-row gap-1.5 w-[42%] justify-start">
+                                                {rows[rowNum].filter(s => ['D','E','F'].some(ltr => s.code.includes(ltr))).map(seat => {
+                                                    const paxIdx = getSelectedPaxIndex(seat.code);
+                                                    const isSelected = paxIdx !== -1;
+                                                    const isUnavailable = seat.status === 'unavailable';
+                                                    const hasPrice = seat.amount > 0;
+                                                    
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={seat.code}
+                                                            disabled={isUnavailable}
+                                                            onPress={() => onSeatSelect(seat, activePaxIdx)}
+                                                            className={`relative w-8 h-8 rounded-lg items-center justify-center border
+                                                                ${isUnavailable ? 'bg-slate-200 border-slate-300 opacity-50' : 
+                                                                  isSelected ? 'bg-emerald-500 border-emerald-600' : 
+                                                                  hasPrice ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}
+                                                        >
+                                                            <Text className={`text-[9px] font-black
+                                                                ${isUnavailable ? 'text-slate-400' : 
+                                                                  isSelected ? 'text-white' : 
+                                                                  hasPrice ? 'text-blue-700' : 'text-slate-600'}`}>
+                                                                {isSelected ? (paxIdx + 1) : seat.code.replace(/\d+/,'')}
+                                                            </Text>
+                                                            {!isSelected && hasPrice && !isUnavailable && (
+                                                                <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full items-center justify-center">
+                                                                    <Text className="text-[5px] text-white font-black">₹</Text>
+                                                                </View>
+                                                            )}
+                                                        </TouchableOpacity>
+                                                    )
+                                                })}
+                                            </View>
+                                        </View>
+                                    ))}
+                                    {seatsList.length === 0 && (
+                                        <View className="py-10 items-center">
+                                            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No seats available</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        </ScrollView>
+                    </View>
+                </View>
+
+                {/* Footer */}
+                <View className="p-4 bg-white border-t border-slate-100 flex-row justify-end">
+                    <TouchableOpacity onPress={onClose} className="px-8 py-4 bg-[#1D4171] rounded-2xl active:scale-95">
+                        <Text className="text-white font-black text-xs uppercase tracking-widest">Done</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        </Modal>
+    );
+};

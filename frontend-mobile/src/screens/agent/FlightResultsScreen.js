@@ -360,7 +360,7 @@ export default function FlightResultsScreen({ navigation, route }) {
             if (!verifyRes.success) return Toast.show({ type: 'error', text1: 'Price Verification Failed', text2: verifyRes.message });
             
             const verifiedNetfare = Number(verifyRes.data?.currentNetfare || netfare);
-            const detailsPayload = { ...(flight || {}), ...(fare || {}), flightID: verifyRes.data?.flightID || fID, refID: verifyRes.data?.refID || rID, netfare: verifiedNetfare, date, returnDate: tripType === 1 ? returnDate : undefined, tripType, appliedMarkup: showMarkup?Number(markup):0, ssrInfo: verifyRes.data?.ftdResponse?.Onward?.ssrInfo };
+            const detailsPayload = { ...(flight || {}), ...(fare || {}), flightID: verifyRes.data?.flightID || fID, refID: verifyRes.data?.refID || rID, netfare: verifiedNetfare, date, returnDate: tripType === 1 ? returnDate : undefined, tripType, appliedMarkup: showMarkup?Number(markup):0, ssrInfo: verifyRes.data?.ssrInfo };
             if (verifiedNetfare > netfare) {
                 setPriceUpdateData({ oldPrice: netfare + (showMarkup?Number(markup):0), newPrice: verifiedNetfare + (showMarkup?Number(markup):0), onConfirm: () => navigation.navigate('Checkout', { bookingData: { service: 'Flight', from, to, baseFare: verifiedNetfare, markupPrice: verifiedNetfare + (showMarkup?Number(markup):0), details: detailsPayload }, passengers: (passengers?.adt||1)+(passengers?.chd||0)+(passengers?.inf||0), paxBreakdown: passengers }) });
                 setShowPriceUpdateModal(true);
