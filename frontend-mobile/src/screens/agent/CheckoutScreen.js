@@ -322,6 +322,8 @@ export default function CheckoutScreen({ navigation, route }) {
             } catch {}
             finally { setLoadingBalance(false); }
         })();
+    }, []);
+
     const handleSeatSelect = (seat, paxIdx) => {
         setSelectedSeats(prev => {
             const newSeats = { ...prev };
