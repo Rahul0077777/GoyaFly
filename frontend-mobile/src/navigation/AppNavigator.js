@@ -17,6 +17,7 @@ import CheckoutScreen from '../screens/agent/CheckoutScreen';
 import WalletScreen from '../screens/agent/WalletScreen';
 import FlightResultsScreen from '../screens/agent/FlightResultsScreen';
 import HotelResultsScreen from '../screens/agent/HotelResultsScreen';
+import HotelCheckoutScreen from '../screens/agent/HotelCheckoutScreen';
 import BookingHistoryScreen from '../screens/agent/BookingHistoryScreen';
 import AgentProfileScreen from '../screens/agent/AgentProfileScreen';
 import OTBApplyScreen from '../screens/public/OTBApplyScreen';
@@ -62,6 +63,7 @@ export default function AppNavigator() {
                 <Stack.Screen name="Wallet" component={WalletScreen} />
                 <Stack.Screen name="FlightResults" component={FlightResultsScreen} />
                 <Stack.Screen name="HotelResults" component={HotelResultsScreen} />
+                <Stack.Screen name="HotelCheckout" component={HotelCheckoutScreen} />
                 <Stack.Screen name="Bookings" component={BookingHistoryScreen} />
                 <Stack.Screen name="Profile" component={AgentProfileScreen} />
                 <Stack.Screen name="OTBApply" component={OTBApplyScreen} />
