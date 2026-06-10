@@ -5,14 +5,7 @@ import { toast } from 'react-toastify';
 import GoyaflyLoader from '../../components/GoyaflyLoader';
 import InspirationLoader from '../../components/InspirationLoader';
 import heroBg from '../../assets/hero_bg.png';
-
-const POPULAR_AIRPORTS = [
-    { code: 'DEL', city: 'New Delhi', label: 'Indira Gandhi Intl (DEL)' },
-    { code: 'BOM', city: 'Mumbai', label: 'Chhatrapati Shivaji (BOM)' },
-    { code: 'DXB', city: 'Dubai', label: 'Dubai Intl (DXB)' },
-    { code: 'BLR', city: 'Bengaluru', label: 'Kempegowda Intl (BLR)' },
-    { code: 'CCU', city: 'Kolkata', label: 'Netaji Subhash (CCU)' }
-];
+import AirportAutocomplete from '../../components/AirportAutocomplete';
 
 // ── Collapsible sidebar section ──────────────────────────────────────────────
 const SidebarSection = ({ title, children, onReset }) => {
@@ -35,105 +28,6 @@ const SidebarSection = ({ title, children, onReset }) => {
     );
 };
 
-// ── Airport Autocomplete ─────────────────────────────────────────────────────
-const AirportAutocomplete = ({ label, codeValue, onChangeCode }) => {
-    const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [airports, setAirports] = useState(POPULAR_AIRPORTS);
-    const [loading, setLoading] = useState(false);
-    const [selectedLabel, setSelectedLabel] = useState(codeValue);
-
-    useEffect(() => {
-        if (!search) { setAirports(POPULAR_AIRPORTS); return; }
-        
-        // Local filtering
-        const localMatch = POPULAR_AIRPORTS.filter(a => 
-            a.code.toLowerCase().includes(search.toLowerCase()) || 
-            a.city.toLowerCase().includes(search.toLowerCase()) ||
-            a.label.toLowerCase().includes(search.toLowerCase())
-        );
-
-        if (localMatch.length > 0) {
-            setAirports(localMatch);
-        } else if (search.length < 2) {
-            setAirports(POPULAR_AIRPORTS);
-        } else {
-            setAirports([]);
-        }
-
-        if (search.length < 2) return;
-
-        const t = setTimeout(async () => {
-            setLoading(true);
-            try {
-                const res = await bookingService.searchAirports(search);
-                if (res.success) setAirports(res.data);
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
-        }, 500);
-        return () => clearTimeout(t);
-    }, [search]);
-
-    useEffect(() => {
-        if (codeValue) {
-            const found = airports.find(a => a.code === codeValue);
-            if (found) {
-                setSelectedLabel(`${found.code} - ${found.city}`);
-            } else {
-                bookingService.searchAirports(codeValue).then(res => {
-                    if (res.success && res.data) {
-                        const resolved = res.data.find(a => a.code === codeValue);
-                        if (resolved) {
-                            setAirports(prev => {
-                                if (prev.some(x => x.code === resolved.code)) return prev;
-                                return [...prev, resolved];
-                            });
-                            setSelectedLabel(`${resolved.code} - ${resolved.city}`);
-                        } else {
-                            setSelectedLabel(codeValue);
-                        }
-                    } else {
-                        setSelectedLabel(codeValue);
-                    }
-                }).catch(() => {
-                    setSelectedLabel(codeValue);
-                });
-            }
-        } else {
-            setSelectedLabel('');
-        }
-    }, [codeValue]);
-
-    return (
-        <div className="flex-1 relative">
-            {label && <span className="text-[10px] font-semibold text-[#999] uppercase tracking-widest block">{label}</span>}
-            <input
-                className="w-full text-[15px] font-bold text-[#222] outline-none bg-transparent placeholder-[#aaa] mt-0.5"
-                value={open ? search : (selectedLabel || codeValue)}
-                onChange={e => { setSearch(e.target.value); setOpen(true); }}
-                onFocus={() => { setSearch(''); setOpen(true); }}
-                onBlur={() => setTimeout(() => setOpen(false), 200)}
-                placeholder="City / Airport"
-            />
-            {open && (
-                <div className="absolute top-[44px] left-0 w-full min-w-[260px] bg-white border border-[#E0E0E0] rounded shadow-xl z-[100] max-h-[300px] overflow-y-auto">
-                    {loading && <div className="p-3 text-center text-xs text-[#888]">Searching...</div>}
-                    {!loading && airports.map(a => (
-                        <div key={a.code}
-                            className="px-4 py-3 hover:bg-[#FFF4EC] border-b border-[#F4F4F4] cursor-pointer flex justify-between items-center"
-                            onClick={() => { onChangeCode(a.code); setSelectedLabel(`${a.code} - ${a.city}`); setOpen(false); }}>
-                            <div>
-                                <p className="text-sm font-bold text-[#222]">{a.city}</p>
-                                <p className="text-[10px] text-[#999]">{a.label}{a.country ? ` • ${a.country}` : ''}</p>
-                            </div>
-                            <span className="text-[#FF8000] font-black text-sm ml-2">{a.code}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
 
 // ── Main Component ───────────────────────────────────────────────────────────
 const formatDisplayDate = (dateStr) => {
@@ -607,7 +501,13 @@ const FlightSearch = () => {
                                                         <button 
                                                             type="button"
                                                             key={n} 
-                                                            onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
+                                                            onClick={() => {
+                                                                setPax(p => {
+                                                                    const newPax = { ...p, [type.id]: n };
+                                                                    if (newPax.inf > newPax.adt) newPax.inf = newPax.adt;
+                                                                    return newPax;
+                                                                });
+                                                            }}
                                                             className="w-8 h-8 rounded-lg text-xs font-black transition-all"
                                                             style={{ background: pax[type.id] === n ? '#ff6c00' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}
                                                         >
@@ -794,7 +694,13 @@ const FlightSearch = () => {
                                                                 <button 
                                                                     type="button"
                                                                     key={n} 
-                                                                    onClick={() => setPax(p => ({ ...p, [type.id]: n }))}
+                                                                    onClick={() => {
+                                                                        setPax(p => {
+                                                                            const newPax = { ...p, [type.id]: n };
+                                                                            if (newPax.inf > newPax.adt) newPax.inf = newPax.adt;
+                                                                            return newPax;
+                                                                        });
+                                                                    }}
                                                                     className="w-9 h-9 rounded-lg text-xs font-black transition-all"
                                                                     style={{ background: pax[type.id] === n ? '#ff6c00' : '#F4F4F4', color: pax[type.id] === n ? '#fff' : '#555' }}
                                                                 >

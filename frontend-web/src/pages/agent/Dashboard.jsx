@@ -5,6 +5,7 @@ import { agentLinks } from '../../config/navigation';
 
 const Dashboard = () => {
     const [balance, setBalance] = useState(0);
+    const [fdBalance, setFdBalance] = useState(0);
     const [stats, setStats] = useState(null);
     const [recentBookings, setRecentBookings] = useState([]);
     const [recentAlerts, setRecentAlerts] = useState([]);
@@ -18,6 +19,7 @@ const Dashboard = () => {
                 const statRes = await agentService.getDashboardStats();
                 if (statRes.success) {
                     setBalance(statRes.data.walletBalance);
+                    setFdBalance(statRes.data.fdWalletBalance || 0);
                     setStats(statRes.data);
                     
                     // Sync KYC Status dynamically
@@ -144,21 +146,34 @@ const Dashboard = () => {
                         )}
                     </div>
                     
-                    <div className="w-full md:w-auto flex justify-center md:justify-end mt-4 md:mt-0">
+                    <div className="w-full md:w-auto flex flex-col sm:flex-row justify-center md:justify-end gap-4 mt-4 md:mt-0">
+                        {/* Main Wallet */}
                         <div 
                             onClick={() => navigate('/agent/wallet')}
-                            className="bg-white/10 backdrop-blur-md border border-white/20 p-5 sm:p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex flex-col items-center gap-3 md:gap-4 cursor-pointer hover:bg-white/20 transition-all shadow-xl w-full md:max-w-[320px] relative overflow-hidden group"
+                            className="bg-white/10 backdrop-blur-md border border-white/20 p-5 sm:p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex flex-col items-center gap-3 md:gap-4 cursor-pointer hover:bg-white/20 transition-all shadow-xl w-full sm:w-[220px] relative overflow-hidden group"
                         >
                             <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#FF9F43]/20 blur-3xl rounded-full pointer-events-none"></div>
-                            <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#FF9F43] to-[#FF9100] text-white rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-2xl shadow-lg relative z-10 group-hover:scale-110 transition-transform">💼</div>
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#FF9F43] to-[#FF9100] text-white rounded-xl flex items-center justify-center text-xl shadow-lg relative z-10 group-hover:scale-110 transition-transform">💼</div>
                             <div className="text-center relative z-10">
-                                <p className="text-[9px] md:text-[10px] sm:text-xs font-black text-white/70 uppercase tracking-widest mb-1">Wallet Balance</p>
-                                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+                                <p className="text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-widest mb-1">Main Wallet</p>
+                                <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight">
                                     {loading ? '...' : `₹${balance.toLocaleString('en-IN')}`}
                                 </p>
                             </div>
-                            <div className="mt-1 md:mt-2 px-3 md:px-4 py-1.5 rounded-full border border-white/20 text-white/90 text-[10px] md:text-xs font-bold flex items-center gap-2 hover:bg-white/10 relative z-10 transition-colors">
-                                View Wallet <span className="text-[10px]">›</span>
+                        </div>
+
+                        {/* FD Wallet */}
+                        <div 
+                            onClick={() => navigate('/agent/wallet')}
+                            className="bg-white/10 backdrop-blur-md border border-white/20 p-5 sm:p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] flex flex-col items-center gap-3 md:gap-4 cursor-pointer hover:bg-white/20 transition-all shadow-xl w-full sm:w-[220px] relative overflow-hidden group"
+                        >
+                            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#10b981]/20 blur-3xl rounded-full pointer-events-none"></div>
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#10b981] to-[#059669] text-white rounded-xl flex items-center justify-center text-xl shadow-lg relative z-10 group-hover:scale-110 transition-transform">✈️</div>
+                            <div className="text-center relative z-10">
+                                <p className="text-[9px] md:text-[10px] font-black text-white/70 uppercase tracking-widest mb-1">FD Wallet</p>
+                                <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                                    {loading ? '...' : `₹${fdBalance.toLocaleString('en-IN')}`}
+                                </p>
                             </div>
                         </div>
                     </div>

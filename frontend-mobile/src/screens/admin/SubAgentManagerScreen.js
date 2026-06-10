@@ -101,7 +101,7 @@ export default function SubAgentManagerScreen({ navigation }) {
                                 const isActive = s.isKycVerified;
                                 return (
                                     <View key={s._id} style={{ backgroundColor: t.card, elevation: 8 }}
-                                        className="p-7 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 mb-6 mx-5">
+                                        className="p-7 rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 mb-6 mx-5">
                                         <View className="flex-row justify-between items-start mb-6 pb-4 border-b border-slate-100">
                                             <View className="flex-1 pr-3">
                                                 <Text style={{ color: t.text }} className="font-black text-xl tracking-wide mb-1.5">{s.agentName}</Text>
@@ -150,7 +150,7 @@ export default function SubAgentManagerScreen({ navigation }) {
                                 <LinearGradient
                                     colors={['#1D4171', '#17365e']}
                                     style={{ elevation: 12 }}
-                                    className="p-7 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-[#0f233d] shadow-2xl shadow-blue-900/30 overflow-hidden"
+                                    className="p-7 rounded-3xl border border-slate-100 border-b-[8px] border-[#0f233d] shadow-2xl shadow-blue-900/30 overflow-hidden"
                                 >
                                     <View className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
                                     <View className="flex-row mb-8 pb-6 border-b border-white/10">

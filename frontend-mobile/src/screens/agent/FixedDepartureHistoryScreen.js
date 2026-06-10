@@ -40,7 +40,11 @@ export default function FixedDepartureHistoryScreen({ navigation }) {
             Alert.alert('Not Available', 'PDF Ticket is being generated or not available yet.');
             return;
         }
-        const fullUrl = `${BASE_URL}${pdfUrl}`;
+        let fullUrl = pdfUrl;
+        if (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+            const cleanPdfUrl = pdfUrl.startsWith('/') ? pdfUrl : `/${pdfUrl}`;
+            fullUrl = `${BASE_URL}${cleanPdfUrl}`;
+        }
         Linking.openURL(fullUrl).catch(err => {
             Alert.alert('Error', 'Could not open PDF ticket.');
         });

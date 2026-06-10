@@ -433,6 +433,10 @@ export const adminService = {
         const response = await api.post('/admin/agents', agentData);
         return response.data;
     },
+    adjustAgentWallet: async (data) => {
+        const response = await api.post('/admin/agents/adjust-wallet', data);
+        return response.data;
+    },
     getPromotions: async () => {
         const response = await api.get('/admin/promotions');
         return response.data;
@@ -563,6 +567,27 @@ export const adminService = {
         const response = await api.delete(`/admin/visas/${id}`);
         return response.data;
     },
+    // Insurance Package Management
+    getInsurancePackages: async () => {
+        const response = await api.get('/insurance');
+        return response.data;
+    },
+    createInsurancePackage: async (formData) => {
+        const response = await api.post('/admin/insurance', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    updateInsurancePackage: async (id, formData) => {
+        const response = await api.put(`/admin/insurance/${id}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    deleteInsurancePackage: async (id) => {
+        const response = await api.delete(`/admin/insurance/${id}`);
+        return response.data;
+    },
     // Refunds Management
     getRefunds: async (page = 1, limit = 50, status = '') => {
         const response = await api.get('/admin/refunds', { params: { page, limit, status } });
@@ -643,6 +668,17 @@ export const visaService = {
     },
     getPackageById: async (id) => {
         const response = await api.get(`/visas/${id}`);
+        return response.data;
+    }
+};
+
+export const insuranceService = {
+    getPackages: async (search = '') => {
+        const response = await api.get('/insurance', { params: { search } });
+        return response.data;
+    },
+    getPackageById: async (id) => {
+        const response = await api.get(`/insurance/${id}`);
         return response.data;
     }
 };

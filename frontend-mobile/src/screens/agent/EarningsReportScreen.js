@@ -63,7 +63,7 @@ export default function EarningsReportScreen({ navigation }) {
                 >
                     {/* KPI Cards */}
                     <View className="mt-8 space-y-4">
-                        <LinearGradient colors={['#10b981', '#059669']} style={{ elevation: 8 }} className="p-8 rounded-[2.5rem] border border-emerald-400 border-b-[8px] border-emerald-700 shadow-2xl shadow-green-900/30 relative overflow-hidden">
+                        <LinearGradient colors={['#10b981', '#059669']} style={{ elevation: 8, padding: 32, borderRadius: 32, borderWidth: 1, borderColor: '#34d399', borderBottomWidth: 8, borderBottomColor: '#047857', overflow: 'hidden' }}>
                              <View className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                              <Text className="text-[10px] font-black text-white/60 uppercase mb-2 tracking-widest">Total Net Profit</Text>
                              <Text className="text-4xl font-black text-white">₹{totalProfit.toLocaleString('en-IN')}</Text>

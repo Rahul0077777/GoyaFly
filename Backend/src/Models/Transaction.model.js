@@ -22,6 +22,11 @@ const transactionSchema = new mongoose.Schema({
         enum: ['WALLET_RECHARGE', 'TICKET_BOOKING', 'FLIGHT_BOOKING', 'COMMISSION', 'REFUND', 'OTB_ACCESS', 'CANCEL_REFUND', 'OTB_APPLICATION', 'ADMIN_ADJUSTMENT', 'RESCHEDULE_FEE'], 
         required: true 
     },
+    walletType: {
+        type: String,
+        enum: ['MAIN', 'FIXED_DEPARTURE'],
+        default: 'MAIN'
+    },
     // We make referenceId unique to prevent duplicate processing of the same payment
     referenceId: { 
         type: String, 

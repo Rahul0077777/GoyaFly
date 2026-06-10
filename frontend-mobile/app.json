@@ -27,6 +27,9 @@
     },
     "extra": {
       "geminiApiKey": "AIzaSyDeW17HvJDRA0e70YxKdCtWhZkZcxqCRNk"
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

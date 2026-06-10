@@ -20,7 +20,10 @@ const fixedDepartureSchema = new mongoose.Schema({
     },
     isActive: { type: Boolean, default: true },
     isInternational: { type: Boolean, default: false },
-    airlineLogo: { type: String, default: '' }
+    airlineLogo: { type: String, default: '' },
+    fromAirportCode: { type: String, default: null },
+    toAirportCode: { type: String, default: null },
+    baggageAllowance: { type: String, default: null }
 }, { 
     timestamps: true 
 });

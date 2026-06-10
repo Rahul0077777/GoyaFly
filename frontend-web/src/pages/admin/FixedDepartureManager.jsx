@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
 import { toast } from 'react-toastify';
 import { FaPlus, FaEdit, FaTrash, FaPlane, FaCalendarAlt, FaClock, FaUsers, FaTag } from 'react-icons/fa';
+import AirportAutocomplete from '../../components/AirportAutocomplete';
 
 const AIRLINES_DATA = [
     { category: 'Indian Airlines', list: [
@@ -96,7 +97,10 @@ const FixedDepartureManager = () => {
         availableSeats: '',
         status: 'Available',
         isActive: true,
-        airlineLogo: null
+        airlineLogo: null,
+        fromAirportCode: '',
+        toAirportCode: '',
+        baggageAllowance: ''
     });
 
     const [bookings, setBookings] = useState([]);
@@ -172,7 +176,10 @@ const FixedDepartureManager = () => {
                 availableSeats: '',
                 status: 'Available',
                 isActive: true,
-                airlineLogo: null
+                airlineLogo: null,
+                fromAirportCode: '',
+                toAirportCode: '',
+                baggageAllowance: ''
             });
         }
         setIsModalOpen(true);
@@ -359,165 +366,230 @@ const FixedDepartureManager = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
-                        <div className="bg-[#1D4171] p-6 flex justify-between items-center text-white">
-                            <h2 className="text-xl font-black">{editingFlight ? 'Edit Flight' : 'Add New Flight'}</h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-2xl">&times;</button>
+                        <div className="bg-gradient-to-r from-[#0B1A30] via-[#1D4171] to-[#25528a] p-6 flex justify-between items-center text-white shadow-md z-10 relative">
+                            <h2 className="text-xl font-black tracking-wide">{editingFlight ? 'Edit Flight' : 'Add New Flight'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-3xl opacity-80 hover:opacity-100 transition-opacity">&times;</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[80vh] overflow-y-auto">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Airline Name</label>
-                                <select 
-                                    required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#1D4171]"
-                                    value={formData.airlineName}
-                                    onChange={handleAirlineChange}
-                                >
-                                    <option value="">Select Airline</option>
-                                    {AIRLINES_DATA.map(cat => (
-                                        <optgroup key={cat.category} label={cat.category}>
-                                            {cat.list.map(a => (
-                                                <option key={a.name} value={a.name}>{a.name} ({a.code})</option>
+                        <form onSubmit={handleSubmit} className="p-8 max-h-[80vh] overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100">
+                            {/* Section 1: Flight Details */}
+                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-6">
+                                <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center text-[#1D4171] shadow-sm">
+                                        <FaPlane size={14} />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Flight Details</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Airline Name</label>
+                                        <select 
+                                            required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 focus:border-[#1D4171] focus:ring-2 focus:ring-[#1D4171]/20 transition-all shadow-sm outline-none"
+                                            value={formData.airlineName}
+                                            onChange={handleAirlineChange}
+                                        >
+                                            <option value="">Select Airline</option>
+                                            {AIRLINES_DATA.map(cat => (
+                                                <optgroup key={cat.category} label={cat.category}>
+                                                    {cat.list.map(a => (
+                                                        <option key={a.name} value={a.name}>{a.name} ({a.code})</option>
+                                                    ))}
+                                                </optgroup>
                                             ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flight Number</label>
-                                <input 
-                                    type="text" required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                    value={formData.flightNumber}
-                                    onChange={e => setFormData({...formData, flightNumber: e.target.value})}
-                                    placeholder="6E-123"
-                                />
-                            </div>
-                            <div className="col-span-full space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Airline / Flight Logo (Optional)</label>
-                                <div className="flex items-center gap-4">
-                                    {editingFlight && editingFlight.airlineLogo && !formData.airlineLogo && (
-                                        <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/${editingFlight.airlineLogo}`} alt="Current Logo" className="w-12 h-12 object-contain bg-white p-1 rounded-xl border border-slate-200 shadow-sm" />
-                                    )}
-                                    {formData.airlineLogo && (
-                                        <div className="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-center font-black text-xs shadow-sm">
-                                            📁
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flight Number</label>
+                                        <input 
+                                            type="text" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:border-[#1D4171] focus:ring-2 focus:ring-[#1D4171]/20 transition-all shadow-sm outline-none"
+                                            value={formData.flightNumber}
+                                            onChange={e => setFormData({...formData, flightNumber: e.target.value})}
+                                            placeholder="e.g. 6E-123"
+                                        />
+                                    </div>
+                                    <div className="col-span-full space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Airline / Flight Logo (Optional)</label>
+                                        <div className="flex items-center gap-4">
+                                            {editingFlight && editingFlight.airlineLogo && !formData.airlineLogo && (
+                                                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/${editingFlight.airlineLogo}`} alt="Current Logo" className="w-14 h-14 object-contain bg-white p-2 rounded-xl border border-slate-200 shadow-sm" />
+                                            )}
+                                            {formData.airlineLogo && (
+                                                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center font-black text-lg shadow-sm">
+                                                    ✓
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <input 
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#1D4171] file:text-white hover:file:bg-[#0f2847] file:cursor-pointer file:transition-colors cursor-pointer"
+                                                    onChange={e => setFormData({...formData, airlineLogo: e.target.files[0]})}
+                                                />
+                                                <p className="text-[10px] font-bold text-slate-400 mt-2">Upload PNG/JPG logo. Default airline branding used if empty.</p>
+                                            </div>
                                         </div>
-                                    )}
-                                    <input 
-                                        type="file"
-                                        accept="image/*"
-                                        className="w-full bg-white border border-slate-200 p-2 rounded-xl font-bold text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#1D4171] file:text-white hover:file:bg-[#1D4171]/90 file:cursor-pointer"
-                                        onChange={e => setFormData({...formData, airlineLogo: e.target.files[0]})}
-                                    />
-                                </div>
-                                <p className="text-[10px] font-bold text-slate-400 mt-1">Upload PNG or JPG logo. If left empty, default airline branding will be used.</p>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From City</label>
-                                <input 
-                                    type="text" required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                    value={formData.fromCity}
-                                    onChange={e => setFormData({...formData, fromCity: e.target.value})}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To City</label>
-                                <input 
-                                    type="text" required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                    value={formData.toCity}
-                                    onChange={e => setFormData({...formData, toCity: e.target.value})}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Departure Date</label>
-                                <input 
-                                    type="date" required
-                                    className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                    value={formData.departureDate}
-                                    onChange={e => setFormData({...formData, departureDate: e.target.value})}
-                                />
-                            </div>
-                            <div className="space-y-1 flex gap-4">
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dep Time</label>
-                                    <input 
-                                        type="text" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                        value={formData.departureTime}
-                                        onChange={e => setFormData({...formData, departureTime: e.target.value})}
-                                        placeholder="10:00 AM"
-                                    />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Arr Time</label>
-                                    <input 
-                                        type="text" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                        value={formData.arrivalTime}
-                                        onChange={e => setFormData({...formData, arrivalTime: e.target.value})}
-                                        placeholder="12:00 PM"
-                                    />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-1 flex gap-4">
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adult Fare</label>
-                                    <input 
-                                        type="number" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#F07E21]"
-                                        value={formData.fare}
-                                        onChange={e => setFormData({...formData, fare: e.target.value})}
-                                    />
+
+                            {/* Section 2: Route & Schedule */}
+                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-6">
+                                <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center text-[#F07E21] shadow-sm">
+                                        <FaCalendarAlt size={14} />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Route & Schedule</h3>
                                 </div>
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Child Fare</label>
-                                    <input 
-                                        type="number" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#1D4171]"
-                                        value={formData.childFare}
-                                        onChange={e => setFormData({...formData, childFare: e.target.value})}
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                                    <div className="space-y-1.5 relative">
+                                        <AirportAutocomplete 
+                                            label="From City / Airport"
+                                            codeValue={formData.fromAirportCode} 
+                                            onChangeCode={code => setFormData(prev => ({...prev, fromAirportCode: code}))} 
+                                            onChangeCity={city => setFormData(prev => ({...prev, fromCity: city}))} 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5 relative">
+                                        <AirportAutocomplete 
+                                            label="To City / Airport"
+                                            codeValue={formData.toAirportCode} 
+                                            onChangeCode={code => setFormData(prev => ({...prev, toAirportCode: code}))} 
+                                            onChangeCity={city => setFormData(prev => ({...prev, toCity: city}))} 
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Infant Fare</label>
-                                    <input 
-                                        type="number" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-[#1D4171]"
-                                        value={formData.infantFare}
-                                        onChange={e => setFormData({...formData, infantFare: e.target.value})}
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Departure Date</label>
+                                        <input 
+                                            type="date" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 focus:border-[#F07E21] focus:ring-2 focus:ring-[#F07E21]/20 transition-all shadow-sm outline-none"
+                                            value={formData.departureDate}
+                                            onChange={e => setFormData({...formData, departureDate: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Departure Time</label>
+                                        <input 
+                                            type="text" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:border-[#F07E21] focus:ring-2 focus:ring-[#F07E21]/20 transition-all shadow-sm outline-none"
+                                            value={formData.departureTime}
+                                            onChange={e => setFormData({...formData, departureTime: e.target.value})}
+                                            placeholder="10:00 AM"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Arrival Time</label>
+                                        <input 
+                                            type="text" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:border-[#F07E21] focus:ring-2 focus:ring-[#F07E21]/20 transition-all shadow-sm outline-none"
+                                            value={formData.arrivalTime}
+                                            onChange={e => setFormData({...formData, arrivalTime: e.target.value})}
+                                            placeholder="12:00 PM"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-1 flex gap-4">
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Seats</label>
+
+                            {/* Section 3: Fares & Baggage */}
+                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-6">
+                                <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center text-emerald-600 shadow-sm">
+                                        <FaTag size={14} />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Fares & Baggage</h3>
+                                </div>
+                                <div className="space-y-1.5 mb-5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Baggage Allowance (Optional)</label>
                                     <input 
-                                        type="number" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                        value={formData.totalSeats}
-                                        onChange={e => setFormData({...formData, totalSeats: e.target.value, availableSeats: e.target.value})}
+                                        type="text"
+                                        className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm outline-none"
+                                        value={formData.baggageAllowance}
+                                        onChange={e => setFormData({...formData, baggageAllowance: e.target.value})}
+                                        placeholder="e.g. 15 KG Check-in / 7 KG Cabin"
                                     />
                                 </div>
-                                <div className="flex-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avail Seats</label>
-                                    <input 
-                                        type="number" required
-                                        className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold"
-                                        value={formData.availableSeats}
-                                        onChange={e => setFormData({...formData, availableSeats: e.target.value})}
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adult Fare *</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[#F07E21]">₹</span>
+                                            <input 
+                                                type="number" required
+                                                className="w-full bg-orange-50/50 border border-orange-200 p-3.5 pl-8 rounded-xl font-black text-[#F07E21] placeholder-orange-300 focus:border-[#F07E21] focus:ring-2 focus:ring-[#F07E21]/20 transition-all shadow-sm outline-none"
+                                                value={formData.fare}
+                                                onChange={e => setFormData({...formData, fare: e.target.value})}
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Child Fare</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[#1D4171]">₹</span>
+                                            <input 
+                                                type="number"
+                                                className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-8 rounded-xl font-black text-[#1D4171] placeholder-slate-300 focus:border-[#1D4171] focus:ring-2 focus:ring-[#1D4171]/20 transition-all shadow-sm outline-none"
+                                                value={formData.childFare}
+                                                onChange={e => setFormData({...formData, childFare: e.target.value})}
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Infant Fare</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[#1D4171]">₹</span>
+                                            <input 
+                                                type="number"
+                                                className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-8 rounded-xl font-black text-[#1D4171] placeholder-slate-300 focus:border-[#1D4171] focus:ring-2 focus:ring-[#1D4171]/20 transition-all shadow-sm outline-none"
+                                                value={formData.infantFare}
+                                                onChange={e => setFormData({...formData, infantFare: e.target.value})}
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="col-span-full pt-4">
-                                <button 
-                                    type="submit"
-                                    className="w-full bg-[#F07E21] text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-[#d96d1a] transition-all flex items-center justify-center gap-2"
-                                >
-                                    <FaPlus /> {editingFlight ? 'Update Flight Inventory' : 'Save Flight Inventory'}
-                                </button>
+
+                            {/* Section 4: Inventory */}
+                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-8">
+                                <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-50 to-fuchsia-100 flex items-center justify-center text-purple-600 shadow-sm">
+                                        <FaUsers size={14} />
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Inventory Management</h3>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Seats</label>
+                                        <input 
+                                            type="number" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 placeholder-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all shadow-sm outline-none"
+                                            value={formData.totalSeats}
+                                            onChange={e => setFormData({...formData, totalSeats: e.target.value, availableSeats: editingFlight ? formData.availableSeats : e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Seats</label>
+                                        <input 
+                                            type="number" required
+                                            className="w-full bg-white border border-slate-300 p-3.5 rounded-xl font-bold text-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all shadow-sm outline-none"
+                                            value={formData.availableSeats}
+                                            onChange={e => setFormData({...formData, availableSeats: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
                             </div>
+
+                            <button 
+                                type="submit"
+                                className="w-full bg-gradient-to-r from-[#FF8C38] via-[#F07E21] to-[#C95000] text-white py-4 rounded-2xl font-black text-lg shadow-[0_8px_30px_rgba(240,126,33,0.35)] hover:shadow-[0_12px_40px_rgba(240,126,33,0.5)] hover:-translate-y-1 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group"
+                            >
+                                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></span>
+                                <FaPlus /> {editingFlight ? 'Update Flight Inventory' : 'Save Flight Inventory'}
+                            </button>
                         </form>
                     </div>
                 </div>

@@ -15,6 +15,16 @@ const AgentManager = () => {
     const [selectedAgent, setSelectedAgent] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [logoFile, setLogoFile] = useState(null);
+    
+    // Wallet Adjustment State
+    const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+    const [walletFormData, setWalletFormData] = useState({
+        agentId: '',
+        walletType: 'MAIN',
+        amount: '',
+        type: 'CREDIT',
+        remark: 'Manual Admin Adjustment'
+    });
     const [editFormData, setEditFormData] = useState({
         agentName: '',
         agencyName: '',
@@ -126,6 +136,37 @@ const AgentManager = () => {
             }
         } catch (err) {
             toast.error('Failed to update agent');
+        }
+    };
+
+    const handleWalletClick = (agent) => {
+        setSelectedAgent(agent);
+        setWalletFormData({
+            agentId: agent._id,
+            walletType: 'MAIN',
+            amount: '',
+            type: 'CREDIT',
+            remark: 'Manual Admin Adjustment'
+        });
+        setIsWalletModalOpen(true);
+    };
+
+    const handleWalletAdjust = async (e) => {
+        e.preventDefault();
+        if (!walletFormData.amount || walletFormData.amount <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
+        
+        try {
+            const res = await adminService.adjustAgentWallet(walletFormData);
+            if (res.success) {
+                toast.success(res.message);
+                setIsWalletModalOpen(false);
+                fetchAgents();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to adjust wallet');
         }
     };
 
@@ -248,12 +289,20 @@ const AgentManager = () => {
                                                 </button>
                                             )}
                                         </td>
-                                        <td className="px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-5 md:py-6 text-right font-black text-gray-900 text-xs sm:text-sm md:text-base border-r border-transparent group-hover:border-primary-100 transition-colors">₹{a.walletBalance.toLocaleString()}</td>
+                                        <td className="px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-5 md:py-6 text-right border-r border-transparent group-hover:border-primary-100 transition-colors">
+                                            <p className="font-black text-gray-900 text-xs sm:text-sm md:text-base">₹{a.walletBalance?.toLocaleString('en-IN') || 0}</p>
+                                            <p className="text-[10px] font-bold text-[#10b981] mt-0.5">FD: ₹{a.fdWalletBalance?.toLocaleString('en-IN') || 0}</p>
+                                        </td>
                                         <td className="px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-5 md:py-6 text-center">
                                             <div className="flex justify-center gap-1 sm:gap-2">
                                                 <button 
                                                     onClick={() => handleEditClick(a)}
+                                                    title="Edit Agent"
                                                     className="p-2 sm:p-2 md:p-3 bg-gray-50 hover:bg-primary-50 text-gray-400 hover:text-primary-500 rounded-lg sm:rounded-lg md:rounded-xl transition-all text-base sm:text-lg">⚙️</button>
+                                                <button 
+                                                    onClick={() => handleWalletClick(a)}
+                                                    title="Adjust Wallet"
+                                                    className="p-2 sm:p-2 md:p-3 bg-green-50 hover:bg-green-100 text-green-500 hover:text-green-600 rounded-lg sm:rounded-lg md:rounded-xl transition-all text-base sm:text-lg">💰</button>
                                                 <button 
                                                     onClick={() => handleToggleBlock(a)}
                                                     className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border whitespace-nowrap transform hover:scale-105 active:scale-95 ${a.isBlocked ? 'bg-green-50 text-green-600 border-green-100 hover:bg-green-600 hover:text-white hover:shadow-xl hover:shadow-green-200' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white hover:shadow-xl hover:shadow-red-200'}`}
@@ -592,6 +641,92 @@ const AgentManager = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Wallet Adjustment Modal */}
+            {isWalletModalOpen && selectedAgent && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
+                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900">Adjust Wallet</h3>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                                    {selectedAgent.agentName} ({selectedAgent.agencyName})
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsWalletModalOpen(false)}
+                                className="w-8 h-8 flex items-center justify-center rounded-xl bg-white shadow-sm text-gray-400 hover:text-red-500 transition-colors font-bold">✕</button>
+                        </div>
+                        <form onSubmit={handleWalletAdjust} className="p-8 space-y-5">
+                            
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Wallet Type</label>
+                                <select 
+                                    value={walletFormData.walletType}
+                                    onChange={(e) => setWalletFormData({...walletFormData, walletType: e.target.value})}
+                                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border-0 focus:ring-2 focus:ring-primary-500 font-bold text-sm shadow-inner cursor-pointer"
+                                    required
+                                >
+                                    <option value="MAIN">Main Wallet (₹{selectedAgent.walletBalance || 0})</option>
+                                    <option value="FIXED_DEPARTURE">Fixed Departure Wallet (₹{selectedAgent.fdWalletBalance || 0})</option>
+                                </select>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <div className="space-y-2 flex-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transaction</label>
+                                    <select 
+                                        value={walletFormData.type}
+                                        onChange={(e) => setWalletFormData({...walletFormData, type: e.target.value})}
+                                        className={`w-full px-4 py-3 rounded-xl border-0 focus:ring-2 focus:ring-primary-500 font-black text-sm shadow-inner cursor-pointer ${walletFormData.type === 'CREDIT' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+                                        required
+                                    >
+                                        <option value="CREDIT">ADD (+)</option>
+                                        <option value="DEBIT">DEDUCT (-)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2 flex-[2]">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₹)</label>
+                                    <input 
+                                        type="number" 
+                                        value={walletFormData.amount}
+                                        onChange={(e) => setWalletFormData({...walletFormData, amount: e.target.value})}
+                                        className="w-full px-4 py-3 bg-gray-50 rounded-xl border-0 focus:ring-2 focus:ring-primary-500 font-black text-lg shadow-inner" 
+                                        placeholder="0.00"
+                                        required
+                                        min="1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Purpose / Remarks</label>
+                                <input 
+                                    type="text" 
+                                    value={walletFormData.remark}
+                                    onChange={(e) => setWalletFormData({...walletFormData, remark: e.target.value})}
+                                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border-0 focus:ring-2 focus:ring-primary-500 font-bold text-sm shadow-inner" 
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="flex gap-4 pt-4">
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsWalletModalOpen(false)}
+                                    className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-2xl hover:bg-gray-200 transition-all text-xs tracking-widest">
+                                    CANCEL
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className={`flex-1 py-4 text-white font-black rounded-2xl transition-all text-xs tracking-widest shadow-lg ${walletFormData.type === 'CREDIT' ? 'bg-green-500 hover:bg-green-600 shadow-green-200' : 'bg-red-500 hover:bg-red-600 shadow-red-200'}`}>
+                                    CONFIRM
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -6,13 +6,12 @@ import CustomDrawerContent from '../components/CustomDrawerContent';
 import DashboardScreen from '../screens/DashboardScreen';
 import FlightSearchScreen from '../screens/agent/FlightSearchScreen';
 import HotelSearchScreen from '../screens/agent/HotelSearchScreen';
-import BusTrainSearchScreen from '../screens/agent/BusTrainSearchScreen';
+import BusSearchScreen from '../screens/agent/BusSearchScreen';
 import HolidaysScreen from '../screens/agent/HolidaysScreen';
 import VisaInsuranceScreen from '../screens/agent/VisaInsuranceScreen';
 import OTBAgentScreen from '../screens/agent/OTBAgentScreen';
 import WalletScreen from '../screens/agent/WalletScreen';
 import LedgerScreen from '../screens/agent/LedgerScreen';
-import MarkupSetupScreen from '../screens/agent/MarkupSetupScreen';
 import NotificationsScreen from '../screens/agent/NotificationsScreen';
 import BookingHistoryScreen from '../screens/agent/BookingHistoryScreen';
 import TicketsScreen from '../screens/agent/TicketsScreen';
@@ -76,9 +75,9 @@ export default function MainDrawerNavigator() {
                 options={{ title: 'Hotel Search', drawerIcon: ({ color }) => <Ionicons name="business" size={22} color={color} /> }}
             />
             <Drawer.Screen
-                name="BusTrainSearch"
-                component={BusTrainSearchScreen}
-                options={{ title: 'Bus & Train', drawerIcon: ({ color }) => <Ionicons name="train" size={22} color={color} /> }}
+                name="BusSearch"
+                component={BusSearchScreen}
+                options={{ title: 'Bus Search', drawerIcon: ({ color }) => <Ionicons name="bus" size={22} color={color} /> }}
             />
             <Drawer.Screen
                 name="Holidays"
@@ -120,11 +119,7 @@ export default function MainDrawerNavigator() {
                 component={LedgerScreen}
                 options={{ title: 'Financial Ledger', drawerIcon: ({ color }) => <Ionicons name="book" size={22} color={color} /> }}
             />
-            <Drawer.Screen
-                name="Markup"
-                component={MarkupSetupScreen}
-                options={{ title: 'Markup Setup', drawerIcon: ({ color }) => <Ionicons name="trending-up" size={22} color={color} /> }}
-            />
+
             <Drawer.Screen
                 name="Tickets"
                 component={TicketsScreen}

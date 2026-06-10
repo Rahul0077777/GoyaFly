@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { walletService } from '../services/api';
 
-const WalletRecharge = ({ isOpen, onClose, onSuccess }) => {
+const WalletRecharge = ({ isOpen, onClose, onSuccess, initialWalletType = 'MAIN' }) => {
+    const [walletType, setWalletType] = useState(initialWalletType);
+
+    useEffect(() => {
+        if (isOpen) {
+            setWalletType(initialWalletType);
+        }
+    }, [isOpen, initialWalletType]);
+
     const [amount, setAmount] = useState('');
     const [selectedMethod, setSelectedMethod] = useState('upi');
     const [upiMethod, setUpiMethod] = useState('qr'); // 'qr' or 'id'
@@ -87,7 +95,8 @@ const WalletRecharge = ({ isOpen, onClose, onSuccess }) => {
                             amount: parseInt(amount),
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
+                            razorpay_signature: response.razorpay_signature,
+                            walletType
                         });
 
                         if (verifyRes.success) {
@@ -170,6 +179,25 @@ const WalletRecharge = ({ isOpen, onClose, onSuccess }) => {
 
                     {/* Content */}
                     <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
+
+                        {/* Wallet Type Selection */}
+                        <div className="space-y-2 sm:space-y-4">
+                            <label className="block text-[10px] sm:text-sm font-black text-gray-400 uppercase tracking-widest">Select Target Wallet</label>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setWalletType('MAIN')}
+                                    className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all ${walletType === 'MAIN' ? 'bg-[#FF9F43] text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    Main Wallet
+                                </button>
+                                <button 
+                                    onClick={() => setWalletType('FIXED_DEPARTURE')}
+                                    className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all ${walletType === 'FIXED_DEPARTURE' ? 'bg-[#10b981] text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                >
+                                    FD Wallet
+                                </button>
+                            </div>
+                        </div>
 
                         {/* Amount Input */}
                         <div className="space-y-2 sm:space-y-4">

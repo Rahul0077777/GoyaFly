@@ -491,10 +491,16 @@ const AdminMarkup = () => {
                                         <div className="text-right flex-shrink-0">
                                             <p className="text-base font-black text-purple-700">{rule.markupType === 'Fixed' ? `₹${rule.markupValue}` : `${rule.markupValue}%`}</p>
                                         </div>
-                                        <button onClick={() => handleDelete(rule._id)}
-                                            className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all flex-shrink-0">
-                                            <IoTrashOutline size={14} />
-                                        </button>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <button onClick={() => { setFormData(rule); setIsModalOpen(true); }}
+                                                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-bold text-[10px] uppercase tracking-widest transition-colors">
+                                                Edit
+                                            </button>
+                                            <button onClick={() => handleDelete(rule._id)}
+                                                className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 font-bold text-[10px] uppercase tracking-widest transition-colors">
+                                                Delete
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -533,10 +539,6 @@ const AdminMarkup = () => {
                                             <span className={rule.refundType === 'Non-Refundable' ? 'text-rose-500' : 'text-emerald-500'}>{rule.refundType}</span>
                                         </p>
                                     </div>
-                                    <button onClick={() => handleDelete(rule._id)}
-                                        className="w-7 h-7 flex items-center justify-center text-gray-200 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all flex-shrink-0">
-                                        <IoTrashOutline size={14} />
-                                    </button>
                                 </div>
                                 <div className="flex justify-between items-end">
                                     <div>
@@ -550,8 +552,11 @@ const AdminMarkup = () => {
                                         {rule.priority > 0 ? 'Priority' : 'Global'}
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-3 border-t border-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <span>STATUS</span>
+                                <div className="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setFormData(rule); setIsModalOpen(true); }} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">Edit</button>
+                                        <button onClick={() => handleDelete(rule._id)} className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors">Delete</button>
+                                    </div>
                                     <span className="text-emerald-500 flex items-center gap-1">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span> ACTIVE
                                     </span>

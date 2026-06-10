@@ -11,7 +11,7 @@ import TicketsScreen from '../screens/agent/TicketsScreen';
 import AboutScreen from '../screens/agent/AboutScreen';
 import ContactSupportScreen from '../screens/agent/ContactSupportScreen';
 import VisaInsuranceScreen from '../screens/agent/VisaInsuranceScreen';
-import BusTrainSearchScreen from '../screens/agent/BusTrainSearchScreen';
+import BusSearchScreen from '../screens/agent/BusSearchScreen';
 import HotelSearchScreen from '../screens/agent/HotelSearchScreen';
 import CheckoutScreen from '../screens/agent/CheckoutScreen';
 import WalletScreen from '../screens/agent/WalletScreen';
@@ -57,7 +57,7 @@ export default function AppNavigator() {
                 <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="Tickets" component={TicketsScreen} />
                 <Stack.Screen name="VisaInsurance" component={VisaInsuranceScreen} />
-                <Stack.Screen name="BusTrainSearch" component={BusTrainSearchScreen} />
+                <Stack.Screen name="BusSearch" component={BusSearchScreen} />
                 <Stack.Screen name="HotelSearch" component={HotelSearchScreen} />
                 <Stack.Screen name="Checkout" component={CheckoutScreen} />
                 <Stack.Screen name="Wallet" component={WalletScreen} />

@@ -72,7 +72,7 @@ export default function AdminDashboardScreen({ navigation }) {
         { title: 'Flight Inv', icon: 'calendar', route: 'FixedDepartureManager', color: '#1D4171' },
         { title: 'Manual Req', icon: 'clipboard', route: 'FixedDepartureBookingManager', color: '#F07E21' },
         { title: 'Support', icon: 'headset', route: 'AdminTickets', color: '#14b8a6' },
-        { title: 'Comms', icon: 'calculator', route: 'CommissionSetup', color: '#6366f1' },
+        { title: 'Markup', icon: 'calculator', route: 'CommissionSetup', color: '#6366f1' },
         { title: 'Promos', icon: 'megaphone', route: 'PromotionManager', color: '#f43f5e' },
         { title: 'Offers', icon: 'pricetag', route: 'OfferManager', color: '#a855f7' },
         { title: 'Sub-Agents', icon: 'git-branch', route: 'SubAgentManager', color: '#0ea5e9' },
@@ -112,7 +112,7 @@ export default function AdminDashboardScreen({ navigation }) {
                     </View>
 
                     {error ? (
-                        <View className="mx-6 bg-red-50 border border-red-100 border-b-4 border-red-200 p-5 rounded-[2rem] mb-6 flex-row items-center shadow-sm">
+                        <View className="mx-6 bg-red-50 border border-red-100 border-b-4 border-red-200 p-5 rounded-3xl mb-6 flex-row items-center shadow-sm">
                             <Ionicons name="alert-circle" size={22} color="#ef4444" />
                             <Text className="ml-3 text-red-700 font-bold text-xs flex-1 leading-5">{error}</Text>
                         </View>
@@ -121,17 +121,17 @@ export default function AdminDashboardScreen({ navigation }) {
                     {/* KPI Grid - 3D Extruded */}
                     <View className="px-6 mb-8 flex-row flex-wrap justify-between">
                         {[
-                            { label: 'Revenue', value: `₹${stats.revenue?.toLocaleString()}`, icon: 'wallet', color: '#1D4171' },
-                            { label: 'Agents', value: stats.activeAgents, icon: 'people', color: '#48A0D4' },
-                            { label: 'Pending KYC', value: stats.pendingKyc, icon: 'time', color: '#f59e0b' },
-                            { label: 'Bookings', value: stats.weeklyBookings, icon: 'journal', color: '#10b981' },
+                            { label: 'Revenue', value: `₹${(stats.revenue || 0).toLocaleString()}`, icon: 'wallet', color: '#1D4171' },
+                            { label: 'Agents', value: stats.activeAgents || 0, icon: 'people', color: '#48A0D4' },
+                            { label: 'Pending KYC', value: stats.pendingKyc || 0, icon: 'time', color: '#f59e0b' },
+                            { label: 'Bookings', value: stats.weeklyBookings || 0, icon: 'journal', color: '#10b981' },
                         ].map((kpi, idx) => (
-                            <View key={idx} className="w-[48%] bg-white p-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 mb-5" style={{ elevation: 8 }}>
-                                <View style={{ backgroundColor: kpi.color + '15' }} className="w-12 h-12 rounded-2xl items-center justify-center mb-4 border border-slate-100 shadow-sm">
-                                    <Ionicons name={kpi.icon} size={22} color={kpi.color} />
+                            <View key={idx} className="w-[48%] bg-white p-5 rounded-[1.5rem] border border-slate-100 border-b-[6px] border-slate-200 shadow-xl shadow-slate-300/40 mb-4" style={{ elevation: 6 }}>
+                                <View style={{ backgroundColor: kpi.color + '15' }} className="w-10 h-10 rounded-xl items-center justify-center mb-4 border border-slate-100 shadow-sm">
+                                    <Ionicons name={kpi.icon} size={20} color={kpi.color} />
                                 </View>
-                                <Text className="text-slate-400 text-[10px] font-black uppercase mb-1.5 tracking-widest">{kpi.label}</Text>
-                                <Text className="text-2xl font-black text-slate-900 tracking-wide" numberOfLines={1}>{kpi.value}</Text>
+                                <Text className="text-slate-400 text-[9px] font-black uppercase mb-1.5 tracking-widest" numberOfLines={1} adjustsFontSizeToFit>{kpi.label}</Text>
+                                <Text className="text-xl sm:text-2xl font-black text-slate-900 tracking-wide" numberOfLines={1} adjustsFontSizeToFit>{kpi.value}</Text>
                             </View>
                         ))}
                     </View>
@@ -164,7 +164,7 @@ export default function AdminDashboardScreen({ navigation }) {
                             </TouchableOpacity>
                         </View>
                         
-                        <View className="bg-white rounded-[2.5rem] p-6 border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40" style={{ elevation: 8 }}>
+                        <View className="bg-white rounded-3xl p-6 border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40" style={{ elevation: 8 }}>
                             {!stats.recentAgentsList || stats.recentAgentsList.length === 0 ? (
                                 <View className="py-8 items-center justify-center">
                                     <Text className="text-slate-400 font-black text-center text-xs tracking-widest uppercase">No pending signups</Text>
@@ -172,21 +172,33 @@ export default function AdminDashboardScreen({ navigation }) {
                             ) : (
                                 stats.recentAgentsList.map((agent, i) => (
                                     <View key={agent._id} className={`py-4 flex-row items-center justify-between ${i !== stats.recentAgentsList.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                                        <View className="flex-row items-center flex-1">
-                                            <View className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center mr-4 border border-slate-100 shadow-sm">
-                                                <Text className="text-slate-900 font-black text-base tracking-wider">{agent.agentName?.charAt(0) || 'A'}</Text>
+                                        <View className="flex-row items-center flex-1 pr-2">
+                                            <View className="w-12 h-12 bg-gradient-to-br from-[#1D4171] to-[#48A0D4] rounded-2xl items-center justify-center mr-3 shadow-md shadow-blue-900/20">
+                                                <Text className="text-white font-black text-lg tracking-wider">{agent.agentName?.charAt(0) || 'A'}</Text>
                                             </View>
-                                            <View className="flex-1 pr-2">
-                                                <Text className="font-black text-base text-slate-900 tracking-wide" numberOfLines={1}>{agent.agentName}</Text>
-                                                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {agent._id.substring(0,8)}</Text>
+                                            <View className="flex-1">
+                                                <Text className="font-black text-sm sm:text-base text-slate-900 tracking-wide" numberOfLines={1}>{agent.agentName}</Text>
+                                                <View className="flex-row items-center mt-1">
+                                                    <View className={`w-1.5 h-1.5 rounded-full mr-1.5 ${agent.isKycVerified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                                    <Text className={`text-[9px] font-black uppercase tracking-widest ${agent.isKycVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                        {agent.isKycVerified ? 'Approved' : 'Pending KYC'}
+                                                    </Text>
+                                                </View>
                                             </View>
                                         </View>
-                                        <TouchableOpacity 
-                                            onPress={() => handleKyc(agent._id)}
-                                            className="bg-[#1D4171] px-5 py-3 rounded-xl border-b-4 border-[#122a4a] active:scale-95 shadow-md shadow-blue-900/30"
-                                        >
-                                            <Text className="text-white font-black text-[10px] uppercase tracking-wider">Approve</Text>
-                                        </TouchableOpacity>
+                                        
+                                        {!agent.isKycVerified ? (
+                                            <TouchableOpacity 
+                                                onPress={() => navigation.navigate('AgentManager')}
+                                                className="bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-100 border-b-4 border-blue-200 active:scale-95 shadow-sm ml-2"
+                                            >
+                                                <Text className="text-blue-600 font-black text-[9px] uppercase tracking-wider">Review</Text>
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <View className="px-2">
+                                                <Ionicons name="checkmark-done" size={20} color="#10b981" />
+                                            </View>
+                                        )}
                                     </View>
                                 ))
                             )}

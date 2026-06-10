@@ -39,6 +39,8 @@ const visaRoutes = require('./routes/visa.routes');
 const adminVisaRoutes = require('./routes/adminVisa.routes');
 const fixedDepartureRoutes = require('./routes/fixedDeparture.routes');
 const adminFixedDepartureRoutes = require('./routes/adminFixedDeparture.routes');
+const insuranceRoutes = require('./routes/insurance.routes');
+const adminInsuranceRoutes = require('./routes/adminInsurance.routes');
 
 const app = express();
 
@@ -127,6 +129,8 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/admin/holidays', adminHolidayRoutes);
 app.use('/api/visas', visaRoutes);
 app.use('/api/admin/visas', adminVisaRoutes);
+app.use('/api/insurance', insuranceRoutes);
+app.use('/api/admin/insurance', adminInsuranceRoutes);
 app.use('/api/fixed-departures', fixedDepartureRoutes);
 app.use('/api/admin/fixed-departures', adminFixedDepartureRoutes);
 

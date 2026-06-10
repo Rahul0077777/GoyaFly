@@ -66,7 +66,7 @@ export default function GlobalSettingsScreen({ navigation }) {
     };
 
     const handleToggleService = async (serviceField, displayName) => {
-        const nextValue = !settings?.[serviceField];
+        const nextValue = settings?.[serviceField] === false ? true : false;
         try {
             setUpdating(true);
             const res = await adminService.updateGlobalSettings({ [serviceField]: nextValue });
@@ -167,7 +167,7 @@ export default function GlobalSettingsScreen({ navigation }) {
                 <ScrollView className="flex-1 px-5 pt-2" showsVerticalScrollIndicator={false}>
                     {/* Platform Mode */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
-                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        className="rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
                         <View className="flex-row items-center justify-between mb-1">
                             <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Platform Mode</Text>
                             <Ionicons name="power" size={24} color={maintenance ? '#ef4444' : '#22c55e'} />
@@ -202,7 +202,7 @@ export default function GlobalSettingsScreen({ navigation }) {
 
                     {/* Default Refund Markup */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
-                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        className="rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
                         <View className="flex-row items-center justify-between mb-1">
                             <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Refund Markup</Text>
                             <Ionicons name="cash" size={24} color="#f59e0b" />
@@ -231,7 +231,7 @@ export default function GlobalSettingsScreen({ navigation }) {
 
                     {/* Service Toggles */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
-                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        className="rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
                         <View className="flex-row items-center justify-between mb-1">
                             <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Service Toggles</Text>
                             <Ionicons name="toggle" size={24} color="#a855f7" />
@@ -245,8 +245,8 @@ export default function GlobalSettingsScreen({ navigation }) {
                                 <Text className="text-[10px] font-bold text-slate-400">Ok To Board requests for agents</Text>
                             </View>
                             <TouchableOpacity onPress={() => handleToggleService('otbServiceActive', 'OTB Service')}
-                                style={{ backgroundColor: settings?.otbServiceActive ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
-                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.otbServiceActive ? 24 : 0 }] }} className="shadow-sm" />
+                                style={{ backgroundColor: settings?.otbServiceActive !== false ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.otbServiceActive !== false ? 24 : 0 }] }} className="shadow-sm" />
                             </TouchableOpacity>
                         </View>
 
@@ -257,15 +257,15 @@ export default function GlobalSettingsScreen({ navigation }) {
                                 <Text className="text-[10px] font-bold text-slate-400">Group flight departure search & book</Text>
                             </View>
                             <TouchableOpacity onPress={() => handleToggleService('fixedDepartureServiceActive', 'Fixed Departure')}
-                                style={{ backgroundColor: settings?.fixedDepartureServiceActive ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
-                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.fixedDepartureServiceActive ? 24 : 0 }] }} className="shadow-sm" />
+                                style={{ backgroundColor: settings?.fixedDepartureServiceActive !== false ? '#22c55e' : '#ef4444', width: 56, height: 32, borderRadius: 16, justifyContent: 'center', paddingHorizontal: 4 }} className="shadow-md active:scale-95">
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: settings?.fixedDepartureServiceActive !== false ? 24 : 0 }] }} className="shadow-sm" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* API Connectivity */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
-                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
+                        className="rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-6">
                         <View className="flex-row items-center justify-between mb-1">
                             <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">API Connectivity</Text>
                             <Ionicons name="pulse" size={24} color="#3b82f6" />
@@ -296,7 +296,7 @@ export default function GlobalSettingsScreen({ navigation }) {
 
                     {/* Master API Tokens */}
                     <View style={{ backgroundColor: t.card, elevation: 8 }}
-                        className="rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-10">
+                        className="rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 p-7 mb-10">
                         <View className="flex-row items-center justify-between mb-1">
                             <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Master API Tokens</Text>
                             <Ionicons name="key" size={24} color="#1D4171" />
@@ -304,7 +304,7 @@ export default function GlobalSettingsScreen({ navigation }) {
                         <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-6">System-wide authorization keys</Text>
 
                         <View className="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-100 shadow-inner">
-                            <Text className="font-mono text-xs font-black text-[#1D4171] tracking-widest text-center">
+                            <Text className="font-mono text-xs font-black text-[#1D4171] tracking-widest text-center" numberOfLines={1} adjustsFontSizeToFit>
                                 {apiKeys['Master Token'] || 'NO_TOKEN_DEFINED'}
                             </Text>
                         </View>

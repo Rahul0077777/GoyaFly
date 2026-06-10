@@ -36,6 +36,11 @@ const agentSchema = new mongoose.Schema({
         default: 0, 
         min: [0, 'Transaction failed: Insufficient wallet balance.'] 
     },
+    fdWalletBalance: { 
+        type: Number, 
+        default: 0, 
+        min: [0, 'Transaction failed: Insufficient Fixed Departure wallet balance.'] 
+    },
     
     isActive: { type: Boolean, default: true },
     isBlocked: { type: Boolean, default: false },

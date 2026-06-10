@@ -23,7 +23,7 @@ const getBalance = async (req, res, next) => {
     try {
         const agent = await Agent.findById(req.user._id);
         if(!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
-        res.status(200).json({ success: true, balance: agent.walletBalance });
+        res.status(200).json({ success: true, balance: agent.walletBalance, fdBalance: agent.fdWalletBalance || 0 });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -43,16 +43,22 @@ const rechargeWallet = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Invalid payment signature' });
         }
 
+        const walletType = req.body.walletType === 'FIXED_DEPARTURE' ? 'FIXED_DEPARTURE' : 'MAIN';
+
         // 3. CHECK FOR DUPLICATE TRANSACTION (Prevent Double Credit)
         const existingTx = await Transaction.findOne({ referenceId: razorpay_payment_id });
         if (existingTx) {
             return res.status(400).json({ success: false, message: 'Transaction already processed' });
         }
 
+        const updateQuery = walletType === 'FIXED_DEPARTURE' 
+            ? { $inc: { fdWalletBalance: Number(amount) } }
+            : { $inc: { walletBalance: Number(amount) } };
+
         // 4. ATOMIC UPDATE (Safer way to update balance)
         const updatedAgent = await Agent.findOneAndUpdate(
             { _id: agentId },
-            { $inc: { walletBalance: Number(amount) } },
+            updateQuery,
             { new: true, runValidators: true }
         );
 
@@ -66,8 +72,9 @@ const rechargeWallet = async (req, res, next) => {
             amount: Number(amount),
             transactionType: 'CREDIT',
             purpose: 'WALLET_RECHARGE',
+            walletType,
             referenceId: razorpay_payment_id,
-            balanceAfterTransaction: updatedAgent.walletBalance,
+            balanceAfterTransaction: walletType === 'FIXED_DEPARTURE' ? updatedAgent.fdWalletBalance : updatedAgent.walletBalance,
             status: 'SUCCESS',
             gross: Number(amount),
             remark: `Wallet recharge via ${razorpay_order_id}`
@@ -77,7 +84,7 @@ const rechargeWallet = async (req, res, next) => {
             success: true, 
             message: 'Wallet recharged successfully', 
             data: { 
-                newBalance: updatedAgent.walletBalance, 
+                newBalance: walletType === 'FIXED_DEPARTURE' ? updatedAgent.fdWalletBalance : updatedAgent.walletBalance, 
                 transaction 
             }
         });

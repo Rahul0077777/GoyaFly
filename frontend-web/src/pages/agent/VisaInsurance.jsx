@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { visaService } from '../../services/api';
+import { visaService, insuranceService } from '../../services/api';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
@@ -22,10 +22,7 @@ const VisaInsurance = () => {
         'Indonesia (Bali)', 'Vietnam', 'Turkey', 'Egypt',
     ];
 
-    const insurancePlans = [
-        { provider: 'TATA AIG', plan: 'Travel Guard', price: 45, cover: '₹50,000', features: ['Medical Emergency', 'Trip Cancellation', 'Baggage Loss'] },
-        { provider: 'HDFC ERGO', plan: 'ExplorerPlus', price: 30, cover: '₹30,000', features: ['Medical Cover', 'Flight Delay', 'Passport Loss'] }
-    ];
+    const [insurancePlans, setInsurancePlans] = useState([]);
 
     const whyChoose = [
         { icon: '🛡️', title: '100% Compliant', desc: 'We ensure complete document verification & compliance', color: '#1D4171' },
@@ -41,8 +38,11 @@ const VisaInsurance = () => {
             setLoading(true);
             const res = await visaService.getPackages();
             if (res.success) setVisas(res.data.filter(v => v.isActive));
+            
+            const insRes = await insuranceService.getPackages();
+            if (insRes.success) setInsurancePlans(insRes.data.filter(i => i.isActive));
         } catch (err) {
-            console.error('Failed to fetch visas', err);
+            console.error('Failed to fetch packages', err);
         } finally {
             setLoading(false);
         }
@@ -359,7 +359,13 @@ const VisaInsurance = () => {
                             <div key={p.provider} className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 group relative p-5 sm:p-6">
                                 <div className="absolute top-0 right-0 w-40 h-40 bg-orange-50 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-700 pointer-events-none" />
                                 <div className="flex items-center gap-4 mb-5 relative z-10">
-                                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#1D4171]/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform flex-shrink-0">🛡️</div>
+                                    {p.images && p.images.length > 0 ? (
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0">
+                                            <img src={`${API_BASE}${p.images[0]}`} alt={p.provider} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#1D4171]/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform flex-shrink-0">🛡️</div>
+                                    )}
                                     <div>
                                         <p className="text-xl font-black text-[#1D4171] group-hover:text-[#F07E21] transition-colors">{p.provider}</p>
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{p.plan}</p>
@@ -389,6 +395,12 @@ const VisaInsurance = () => {
                                 </button>
                             </div>
                         ))}
+                        {insurancePlans.length === 0 && !loading && (
+                            <div className="col-span-full py-16 bg-white rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 font-bold text-center">
+                                <span className="text-4xl mb-3">🛡️</span>
+                                <p className="italic">No active insurance plans available at the moment.</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Trust bar for insurance too */}

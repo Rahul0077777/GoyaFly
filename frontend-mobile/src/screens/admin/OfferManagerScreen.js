@@ -22,7 +22,7 @@ export default function OfferManagerScreen({ navigation }) {
         code: '',
         discountType: 'FLAT',
         discountValue: '',
-        minBookingAmount: '0',
+        minBookingAmount: '',
         maxDiscountAmount: '',
         validUntil: '',
         isActive: true
@@ -51,8 +51,8 @@ export default function OfferManagerScreen({ navigation }) {
                 code: offer.code,
                 discountType: offer.discountType,
                 discountValue: offer.discountValue.toString(),
-                minBookingAmount: (offer.minBookingAmount || 0).toString(),
-                maxDiscountAmount: (offer.maxDiscountAmount || '').toString(),
+                minBookingAmount: offer.minBookingAmount ? offer.minBookingAmount.toString() : '',
+                maxDiscountAmount: offer.maxDiscountAmount ? offer.maxDiscountAmount.toString() : '',
                 validUntil: offer.validUntil ? offer.validUntil.split('T')[0] : '',
                 isActive: offer.isActive
             });
@@ -62,7 +62,7 @@ export default function OfferManagerScreen({ navigation }) {
                 code: '',
                 discountType: 'FLAT',
                 discountValue: '',
-                minBookingAmount: '0',
+                minBookingAmount: '',
                 maxDiscountAmount: '',
                 validUntil: '',
                 isActive: true
@@ -73,7 +73,7 @@ export default function OfferManagerScreen({ navigation }) {
 
     const handleSave = async () => {
         if (!formData.code || !formData.discountValue || !formData.validUntil) {
-            return Toast.show({ type: 'info', text1: 'Error', text2: 'Please fill in all mandatory fields (Code, Value, Expiry)' });
+            return Toast.show({ type: 'info', text1: 'Error', text2: 'Please fill in Code, Value and Expiry' });
         }
 
         setSaving(true);
@@ -81,8 +81,8 @@ export default function OfferManagerScreen({ navigation }) {
             const payload = {
                 ...formData,
                 discountValue: parseFloat(formData.discountValue),
-                minBookingAmount: parseFloat(formData.minBookingAmount || 0),
-                maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : undefined
+                minBookingAmount: formData.minBookingAmount ? parseFloat(formData.minBookingAmount) : 0,
+                maxDiscountAmount: formData.maxDiscountAmount && formData.discountType === 'PERCENTAGE' ? parseFloat(formData.maxDiscountAmount) : undefined
             };
 
             let res;
@@ -141,19 +141,19 @@ export default function OfferManagerScreen({ navigation }) {
                 {/* Header */}
                 <View className="px-5 py-5 flex-row items-center justify-between border-b border-slate-100 mb-2">
                     <View className="flex-row items-center">
-                        <TouchableOpacity onPress={() => navigation.goBack()} className="w-12 h-12 bg-white rounded-2xl items-center justify-center border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-sm mr-3.5">
-                            <Ionicons name="arrow-back" size={22} color="#0f172a" />
+                        <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-slate-50 rounded-xl items-center justify-center border border-slate-100 active:scale-95 shadow-sm mr-3">
+                            <Ionicons name="arrow-back" size={20} color="#0f172a" />
                         </TouchableOpacity>
-                        <View className="bg-orange-50 w-12 h-12 rounded-2xl items-center justify-center border border-orange-100 shadow-sm mr-3.5">
-                            <Ionicons name="megaphone" size={24} color="#F07E21" />
+                        <View className="bg-orange-50 w-10 h-10 rounded-xl items-center justify-center border border-orange-100 shadow-sm mr-3">
+                            <Ionicons name="pricetag" size={20} color="#F07E21" />
                         </View>
                         <View>
-                            <Text style={{ color: t.text }} className="text-2xl font-black tracking-wide">Campaign Manager</Text>
-                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-0.5">Promotion & Loyalty Engine</Text>
+                            <Text style={{ color: t.text }} className="text-xl font-black tracking-wide">Offers & Coupons</Text>
+                            <Text className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-0.5">Promotion Engine</Text>
                         </View>
                     </View>
-                    <TouchableOpacity onPress={() => handleOpenModal()} className="bg-[#F07E21] px-5 py-3.5 rounded-2xl border border-[#F07E21] border-b-4 border-b-[#D96B18] shadow-lg shadow-orange-500/30 active:scale-95">
-                        <Text className="text-white font-black text-[10px] uppercase tracking-wider">+ New Offer</Text>
+                    <TouchableOpacity onPress={() => handleOpenModal()} className="bg-slate-900 px-4 py-2.5 rounded-lg shadow-md active:scale-95">
+                        <Text className="text-white font-black text-[9px] uppercase tracking-wider">+ ADD OFFER</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -175,34 +175,34 @@ export default function OfferManagerScreen({ navigation }) {
                                 const isActive = status === 'Active';
                                 return (
                                     <View key={o._id} style={{ backgroundColor: t.card, elevation: 8 }}
-                                        className={`p-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 mb-6 shadow-2xl shadow-slate-300/40 ${!isActive ? 'opacity-60' : ''}`}>
-                                        <View className="flex-row justify-between items-start mb-6 pb-4 border-b border-slate-100">
+                                        className={`p-6 rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 mb-6 shadow-xl shadow-slate-200/50 ${!isActive ? 'opacity-60' : ''}`}>
+                                <View className="flex-row justify-between items-start mb-5 pb-4 border-b border-slate-100">
                                             <View className="flex-1 pr-2">
-                                                <View className={`px-3.5 py-1.5 rounded-xl border mb-2 shadow-sm self-start ${isActive ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                                                    <Text className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-emerald-800' : 'text-slate-500'}`}>{status}</Text>
+                                                <View className={`px-2.5 py-1 rounded-md border mb-1.5 shadow-sm self-start ${isActive ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                                                    <Text className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'text-emerald-800' : 'text-slate-500'}`}>{status}</Text>
                                                 </View>
-                                                <Text style={{ color: t.text }} className="text-2xl font-black tracking-wide">{o.code}</Text>
+                                                <Text style={{ color: t.text }} className="text-xl font-black tracking-wide" numberOfLines={1} adjustsFontSizeToFit>{o.code}</Text>
                                             </View>
-                                            <View className="flex-row gap-2.5">
-                                                <TouchableOpacity onPress={() => handleOpenModal(o)} className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-sm">
-                                                    <Ionicons name="settings" size={18} color="#0f172a" />
+                                            <View className="flex-row gap-2 mt-1">
+                                                <TouchableOpacity onPress={() => handleOpenModal(o)} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-sm">
+                                                    <Ionicons name="settings" size={14} color="#0f172a" />
                                                 </TouchableOpacity>
-                                                <TouchableOpacity onPress={() => handleDelete(o._id)} className="bg-rose-50 p-3.5 rounded-2xl border border-rose-100 border-b-4 border-rose-200 active:scale-95 shadow-sm">
-                                                    <Ionicons name="trash" size={18} color="#ef4444" />
+                                                <TouchableOpacity onPress={() => handleDelete(o._id)} className="bg-rose-50 p-2.5 rounded-xl border border-rose-100 border-b-4 border-rose-200 active:scale-95 shadow-sm">
+                                                    <Ionicons name="trash" size={14} color="#ef4444" />
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
 
-                                        <View className="flex-row justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                            <View>
-                                                <Text className="text-slate-400 text-[9px] font-black uppercase mb-1 tracking-widest">Discount Value</Text>
-                                                <Text className="text-[#1D4171] font-black text-3xl tracking-tight">
+                                        <View className="flex-row flex-wrap justify-between items-center bg-slate-50 p-3.5 rounded-xl border border-slate-100 shadow-sm gap-y-2">
+                                            <View className="mr-2">
+                                                <Text className="text-slate-400 text-[9px] font-black uppercase mb-1 tracking-widest">Discount</Text>
+                                                <Text className="text-[#F07E21] font-black text-xl tracking-tight">
                                                     {o.discountType === 'FLAT' ? '₹' : ''}{o.discountValue}{o.discountType === 'PERCENTAGE' ? '%' : ''}
                                                 </Text>
                                             </View>
                                             <View className="items-end">
                                                 <Text className="text-slate-400 text-[9px] font-black uppercase mb-1 tracking-widest">Expires On</Text>
-                                                <Text className="text-slate-800 font-black text-sm mt-0.5">{new Date(o.validUntil).toLocaleDateString()}</Text>
+                                                <Text className="text-slate-800 font-black text-xs mt-0.5">{new Date(o.validUntil).toLocaleDateString()}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -210,20 +210,20 @@ export default function OfferManagerScreen({ navigation }) {
                             })
                         )}
 
-                        {/* Campaign Engine Footer */}
-                        <View className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 border-b-[8px] border-black mt-4 mb-10 shadow-2xl shadow-slate-900/40 relative overflow-hidden" style={{ elevation: 12 }}>
-                            <View className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-12 -mt-12" />
-                            <View className="flex-row items-center mb-6">
-                                <View className="w-14 h-14 bg-white rounded-2xl items-center justify-center mr-5 rotate-12 shadow-md">
-                                    <Ionicons name="rocket" size={32} color="#F07E21" />
+                        {/* Marketing Engine Footer */}
+                        <View className="bg-slate-900 p-8 rounded-[2.5rem] mt-2 mb-10 shadow-2xl relative overflow-hidden" style={{ elevation: 12 }}>
+                            <View className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-12 -mt-12 blur-xl" />
+                            <View className="flex-row items-center mb-6 z-10">
+                                <View className="w-14 h-14 bg-white rounded-2xl items-center justify-center mr-5 rotate-12 shadow-lg shadow-white/10">
+                                    <Ionicons name="megaphone" size={28} color="#F07E21" />
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="text-white font-black text-xl tracking-wide">Marketing Hub</Text>
-                                    <Text className="text-slate-400 font-bold text-xs mt-1">Schedule notifications & emails</Text>
+                                    <Text className="text-white font-black text-xl tracking-wide">Master Marketing Engine</Text>
+                                    <Text className="text-slate-400 font-bold text-[10px] mt-1 leading-snug">Schedule push notifications & emails to your entire agent network.</Text>
                                 </View>
                             </View>
-                            <TouchableOpacity className="bg-white py-4 rounded-2xl items-center border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-md">
-                                <Text className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Launch Campaign Blast</Text>
+                            <TouchableOpacity className="bg-white py-4 rounded-xl items-center active:scale-95 shadow-md">
+                                <Text className="text-slate-900 font-black text-[10px] uppercase tracking-widest">Launch Blast</Text>
                             </TouchableOpacity>
                         </View>
                         <View className="h-10" />
@@ -231,95 +231,115 @@ export default function OfferManagerScreen({ navigation }) {
                 )}
             </SafeAreaView>
 
-            {/* Modal */}
+            {/* Campaign Form Modal */}
             <Modal visible={isModalOpen} animationType="slide" transparent>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-black/60 justify-end">
-                    <View className="bg-white rounded-t-[3rem] p-8 pb-12 border-t border-slate-100 shadow-2xl" style={{ elevation: 24 }}>
-                        <View className="flex-row justify-between items-center mb-8 border-b border-slate-100 pb-4">
+                    <View className="bg-white rounded-t-[2.5rem] shadow-2xl border-t border-slate-100 max-h-[90%]">
+                        <View className="p-6 border-b border-slate-100 flex-row justify-between items-center bg-slate-50/50 rounded-t-[2.5rem]">
                             <View>
-                                <Text className="text-2xl font-black text-[#1D4171] uppercase tracking-wide">
-                                    {editingOffer ? 'Edit Campaign' : 'New Campaign'}
+                                <Text className="text-xl font-black text-[#0f172a] uppercase tracking-wide">
+                                    {editingOffer ? 'Edit Offer' : 'New Offer'}
                                 </Text>
-                                <Text className="text-[10px] font-black text-slate-400 uppercase mt-1 tracking-widest">Promotion Engineering</Text>
+                                <Text className="text-[9px] font-black text-slate-400 uppercase mt-1 tracking-widest">Promotion Details</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setIsModalOpen(false)} className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-sm">
-                                <Ionicons name="close" size={22} color="#64748b" />
+                            <TouchableOpacity onPress={() => setIsModalOpen(false)} className="w-10 h-10 bg-white rounded-xl items-center justify-center border border-slate-100 active:scale-95 shadow-sm">
+                                <Ionicons name="close" size={20} color="#64748b" />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Promo Code</Text>
-                            <TextInput 
-                                placeholder="e.g. WINTER500" 
-                                autoCapitalize="characters"
-                                value={formData.code} 
-                                onChangeText={v => setFormData({ ...formData, code: v.toUpperCase() })}
-                                placeholderTextColor="#9ca3af"
-                                className="bg-slate-50 px-6 py-5 rounded-2xl text-xl font-black text-slate-900 border border-slate-100 mb-6 shadow-inner" 
-                            />
-
-                            <View className="flex-row gap-4 mb-6">
-                                <View className="flex-1">
-                                    <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Discount Value</Text>
+                        <ScrollView showsVerticalScrollIndicator={false} className="p-6">
+                            <View className="space-y-4 pb-10">
+                                <View>
+                                    <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Coupon Code</Text>
                                     <TextInput 
-                                        placeholder="0.00" keyboardType="numeric" 
-                                        value={formData.discountValue} 
-                                        onChangeText={v => setFormData({ ...formData, discountValue: v })}
-                                        placeholderTextColor="#9ca3af"
-                                        className="bg-slate-50 px-6 py-5 rounded-2xl text-lg font-black text-slate-900 border border-slate-100 shadow-inner" 
+                                        placeholder="e.g. SUMMER25" 
+                                        autoCapitalize="characters"
+                                        value={formData.code} 
+                                        onChangeText={v => setFormData({ ...formData, code: v.toUpperCase() })}
+                                        className="bg-slate-50 px-5 py-4 rounded-xl text-lg font-black text-slate-900 border border-slate-100" 
                                     />
                                 </View>
-                                <View className="flex-1">
-                                    <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Type</Text>
-                                    <View className="flex-row bg-slate-50 rounded-2xl p-1 border border-slate-100 shadow-inner">
-                                        {['FLAT', 'PERCENTAGE'].map(type => {
-                                            const active = formData.discountType === type;
-                                            return (
-                                                <TouchableOpacity key={type} onPress={() => setFormData({ ...formData, discountType: type })}
-                                                    className={`flex-1 py-4 rounded-xl items-center ${active ? 'bg-white shadow-sm border border-slate-100' : ''}`}>
-                                                    <Text className={`text-[10px] font-black tracking-widest ${active ? 'text-slate-900' : 'text-slate-400'}`}>
-                                                        {type === 'FLAT' ? '₹ CASH' : '% OFF'}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
+
+                                <View className="flex-col gap-4">
+                                    <View>
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Type</Text>
+                                        <View className="flex-row bg-slate-50 rounded-xl p-1 border border-slate-100">
+                                            {['FLAT', 'PERCENTAGE'].map(type => {
+                                                const active = formData.discountType === type;
+                                                return (
+                                                    <TouchableOpacity key={type} onPress={() => setFormData({ ...formData, discountType: type, maxDiscountAmount: type === 'FLAT' ? '' : formData.maxDiscountAmount })}
+                                                        className={`flex-1 py-3.5 rounded-lg items-center ${active ? 'bg-white shadow-sm border border-slate-100' : ''}`}>
+                                                        <Text className={`text-[10px] font-black tracking-widest ${active ? 'text-slate-900' : 'text-slate-400'}`}>
+                                                            {type === 'FLAT' ? 'FLAT (₹)' : 'PERCENT (%)'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                    <View>
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Discount Value</Text>
+                                        <TextInput 
+                                            placeholder="0" keyboardType="numeric" 
+                                            value={formData.discountValue} 
+                                            onChangeText={v => setFormData({ ...formData, discountValue: v })}
+                                            className="bg-slate-50 px-5 py-4 rounded-xl text-base font-black text-slate-900 border border-slate-100" 
+                                        />
                                     </View>
                                 </View>
-                            </View>
 
-                            <View className="flex-row gap-4 mb-8">
-                                <View className="flex-1">
+                                <View className="flex-row gap-3">
+                                    <View className="flex-1">
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Min. Booking</Text>
+                                        <TextInput 
+                                            placeholder="0" keyboardType="numeric" 
+                                            value={formData.minBookingAmount} 
+                                            onChangeText={v => setFormData({ ...formData, minBookingAmount: v })}
+                                            className="bg-slate-50 px-4 py-4 rounded-xl text-sm font-black text-slate-900 border border-slate-100" 
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Max Cap</Text>
+                                        <TextInput 
+                                            placeholder="None" keyboardType="numeric" 
+                                            value={formData.maxDiscountAmount} 
+                                            onChangeText={v => setFormData({ ...formData, maxDiscountAmount: v })}
+                                            editable={formData.discountType === 'PERCENTAGE'}
+                                            className={`px-4 py-4 rounded-xl text-sm font-black text-slate-900 border border-slate-100 ${formData.discountType === 'FLAT' ? 'bg-slate-100 text-slate-400' : 'bg-slate-50'}`} 
+                                        />
+                                    </View>
+                                </View>
+
+                                <View>
                                     <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">Expiry Date (YYYY-MM-DD)</Text>
                                     <TextInput 
                                         placeholder="2024-12-31" 
                                         value={formData.validUntil} 
                                         onChangeText={v => setFormData({ ...formData, validUntil: v })}
-                                        placeholderTextColor="#9ca3af"
-                                        className="bg-slate-50 px-6 py-5 rounded-2xl text-sm font-black text-slate-900 border border-slate-100 shadow-inner" 
+                                        className="bg-slate-50 px-5 py-4 rounded-xl text-sm font-black text-slate-900 border border-slate-100" 
                                     />
                                 </View>
-                            </View>
 
-                            <View className="flex-row justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-10 shadow-sm">
-                                <View>
-                                    <Text className="font-black text-slate-800 text-base tracking-wide mb-0.5">Campaign Active Status</Text>
-                                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enable promo code usage</Text>
+                                <View className="flex-row justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2">
+                                    <View>
+                                        <Text className="font-black text-slate-800 text-sm tracking-wide mb-0.5">Active Status</Text>
+                                        <Text className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Enable usage</Text>
+                                    </View>
+                                    <Switch 
+                                        value={formData.isActive} 
+                                        onValueChange={v => setFormData({ ...formData, isActive: v })}
+                                        trackColor={{ false: '#cbd5e1', true: '#10b981' }}
+                                    />
                                 </View>
-                                <Switch 
-                                    value={formData.isActive} 
-                                    onValueChange={v => setFormData({ ...formData, isActive: v })}
-                                    trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
-                                    thumbColor="#FFF"
-                                />
-                            </View>
 
-                            <TouchableOpacity 
-                                onPress={handleSave} 
-                                disabled={saving}
-                                className="bg-[#F07E21] py-5 rounded-2xl items-center border border-[#F07E21] border-b-[6px] border-b-[#D96B18] shadow-xl shadow-orange-500/30 active:scale-95 mb-2"
-                            >
-                                {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black uppercase text-xs tracking-widest">Update Campaign Engine</Text>}
-                            </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={handleSave} 
+                                    disabled={saving}
+                                    className="bg-slate-900 py-4 rounded-xl items-center shadow-lg active:scale-95 mt-4"
+                                >
+                                    {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black uppercase text-xs tracking-widest">Publish Campaign</Text>}
+                                </TouchableOpacity>
+                            </View>
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>

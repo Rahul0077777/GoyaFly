@@ -54,8 +54,7 @@ export default function DashboardScreen({ navigation }) {
     const services = [
         { id: 'flight', name: 'Flights', icon: 'airplane', color: '#48A0D4', path: 'Search' },
         { id: 'hotel', name: 'Hotels', icon: 'business', color: '#f59e0b', path: 'HotelSearch' },
-        { id: 'bus', name: 'Buses', icon: 'bus', color: '#10b981', path: 'BusTrainSearch' },
-        { id: 'train', name: 'Trains', icon: 'train', color: '#8b5cf6', path: 'BusTrainSearch' },
+        { id: 'bus', name: 'Buses', icon: 'bus', color: '#10b981', path: 'BusSearch' },
         { id: 'visa', name: 'Visa', icon: 'document-text', color: '#ef4444', path: 'VisaInsurance' },
         { id: 'holiday', name: 'Holidays', icon: 'sunny', color: '#06b6d4', path: 'Holidays' },
         { id: 'group', name: 'Groups', icon: 'people', color: '#ec4899', path: 'GroupFareRequest' },
@@ -119,8 +118,7 @@ export default function DashboardScreen({ navigation }) {
                         <LinearGradient 
                             colors={['#1D4171', '#15305B']} 
                             start={{x: 0, y: 0}} end={{x: 1, y: 1}}
-                            style={{ padding: 26, borderRadius: 32, shadowColor: '#1D4171', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 15 }}
-                            className="rounded-[2.5rem] border border-blue-400/20 overflow-hidden"
+                            style={{ padding: 26, borderRadius: 32, shadowColor: '#1D4171', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 15, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(96,165,250,0.2)' }}
                         >
                             <View className="flex-row justify-between items-start mb-6">
                                 <View>

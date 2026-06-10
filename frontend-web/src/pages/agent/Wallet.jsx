@@ -6,10 +6,12 @@ import { FaListUl, FaWallet, FaHistory, FaRegCreditCard, FaHeadset, FaShieldAlt 
 
 const Wallet = () => {
     const [balance, setBalance] = useState(0);
+    const [fdBalance, setFdBalance] = useState(0);
     const [stats, setStats] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [rechargeOpen, setRechargeOpen] = useState(false);
+    const [rechargeType, setRechargeType] = useState('MAIN');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
@@ -35,7 +37,10 @@ const Wallet = () => {
         setLoading(true);
         try {
             const res = await walletService.getBalance();
-            if (res.success) setBalance(res.balance);
+            if (res.success) {
+                setBalance(res.balance);
+                setFdBalance(res.fdBalance || 0);
+            }
 
             const statsRes = await walletService.getStats();
             if (statsRes.success) setStats(statsRes.data);
@@ -101,31 +106,61 @@ const Wallet = () => {
                 </div>
             </div>
 
-            {/* Main Balance Card */}
-            <div className="bg-[#1D4171] rounded-3xl p-6 md:p-8 text-white relative shadow-xl overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
-                
-                <div className="flex justify-between items-start mb-8 relative z-10">
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 mb-2">Available Balance</p>
-                        <p className="text-4xl md:text-5xl font-black tracking-tighter mb-4">₹{balance.toLocaleString('en-IN')}</p>
-                        <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-emerald-500/30 flex items-center gap-2 w-max">
-                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-                            Wallet is Active
-                        </span>
+            {/* Wallets */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Main Balance Card */}
+                <div className="bg-[#1D4171] rounded-3xl p-6 md:p-8 text-white relative shadow-xl overflow-hidden flex flex-col justify-between h-full">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
+                    
+                    <div className="flex justify-between items-start mb-8 relative z-10">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 mb-2">Main Wallet</p>
+                            <p className="text-4xl md:text-5xl font-black tracking-tighter mb-4">₹{balance.toLocaleString('en-IN')}</p>
+                            <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-emerald-500/30 flex items-center gap-2 w-max">
+                                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+                                Active
+                            </span>
+                        </div>
+                        <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/10 shrink-0 shadow-inner">
+                            💼
+                        </div>
                     </div>
-                    <button className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors border border-white/10 shrink-0 shadow-inner">
-                        <FaListUl className="text-slate-200 text-sm" />
+                    
+                    <button 
+                        onClick={() => { setRechargeType('MAIN'); setRechargeOpen(true); }}
+                        className="w-full bg-white text-[#1D4171] font-black py-3 sm:py-4 rounded-xl text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 relative z-10 shadow-lg shadow-black/10 active:scale-95 mt-auto"
+                    >
+                        ADD TO MAIN <span className="text-lg leading-none border border-[#1D4171] rounded-full w-5 h-5 flex items-center justify-center pb-0.5 ml-1">+</span>
                     </button>
                 </div>
-                
-                <button 
-                    onClick={() => setRechargeOpen(true)}
-                    className="w-full bg-white text-[#1D4171] font-black py-3 sm:py-4 rounded-xl text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 relative z-10 shadow-lg shadow-black/10 active:scale-95"
-                >
-                    ADD MONEY <span className="text-lg leading-none border border-[#1D4171] rounded-full w-5 h-5 flex items-center justify-center pb-0.5 ml-1">+</span>
-                </button>
+
+                {/* FD Balance Card */}
+                <div className="bg-[#059669] rounded-3xl p-6 md:p-8 text-white relative shadow-xl overflow-hidden flex flex-col justify-between h-full">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#10b981]/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
+                    
+                    <div className="flex justify-between items-start mb-8 relative z-10">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-200 mb-2">Fixed Departure Wallet</p>
+                            <p className="text-4xl md:text-5xl font-black tracking-tighter mb-4">₹{fdBalance.toLocaleString('en-IN')}</p>
+                            <span className="bg-[#10b981]/20 text-emerald-100 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-emerald-400/30 flex items-center gap-2 w-max">
+                                <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+                                Dedicated
+                            </span>
+                        </div>
+                        <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/10 shrink-0 shadow-inner">
+                            ✈️
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onClick={() => { setRechargeType('FIXED_DEPARTURE'); setRechargeOpen(true); }}
+                        className="w-full bg-white text-[#059669] font-black py-3 sm:py-4 rounded-xl text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 relative z-10 shadow-lg shadow-black/10 active:scale-95 mt-auto"
+                    >
+                        ADD TO FD <span className="text-lg leading-none border border-[#059669] rounded-full w-5 h-5 flex items-center justify-center pb-0.5 ml-1">+</span>
+                    </button>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -199,7 +234,7 @@ const Wallet = () => {
             <div className="bg-white rounded-3xl p-5 md:p-8 shadow-sm border border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 sm:mb-6">Quick Actions</p>
                 <div className="grid grid-cols-4 gap-2 sm:gap-4 text-center">
-                    <div onClick={() => setRechargeOpen(true)} className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group">
+                    <div onClick={() => { setRechargeType('MAIN'); setRechargeOpen(true); }} className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-blue-50 text-blue-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl group-hover:bg-blue-500 group-hover:text-white transition-all"><FaWallet /></div>
                         <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-slate-600 leading-tight">Add<br/>Money</span>
                     </div>
@@ -271,7 +306,9 @@ const Wallet = () => {
                                     </td>
                                     <td className="py-5 pr-4">
                                         <p className="font-black text-slate-800 text-[13px] md:text-sm mb-1">{tx.purpose.replace(/_/g, ' ')}</p>
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">REF: {tx.referenceId || tx._id.substring(0,8)} • {new Date(tx.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                            {tx.walletType === 'FIXED_DEPARTURE' ? 'FD WALLET' : 'MAIN WALLET'} • REF: {tx.referenceId || tx._id.substring(0,8)} • {new Date(tx.createdAt).toLocaleDateString()}
+                                        </p>
                                     </td>
                                     <td className={`py-5 text-right font-black text-sm md:text-base whitespace-nowrap ${
                                         tx.transactionType === 'CREDIT' ? 'text-emerald-500' : 'text-slate-800'
@@ -296,10 +333,10 @@ const Wallet = () => {
 
             <WalletRecharge 
                 isOpen={rechargeOpen} 
+                initialWalletType={rechargeType}
                 onClose={() => setRechargeOpen(false)}
-                onSuccess={(newBalance) => {
-                    setBalance(newBalance);
-                    fetchTransactions(1);
+                onSuccess={() => {
+                    fetchWalletData();
                 }}
             />
         </div>

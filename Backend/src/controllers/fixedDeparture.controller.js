@@ -209,7 +209,7 @@ const cancelBooking = async (req, res) => {
         // Refund Agent
         const agent = await Agent.findById(booking.agentId);
         if (agent) {
-            agent.walletBalance += booking.totalFare;
+            agent.fdWalletBalance += booking.totalFare;
             await agent.save();
 
             // Create Refund Transaction
@@ -217,8 +217,9 @@ const cancelBooking = async (req, res) => {
                 agentId: agent._id,
                 transactionType: 'CREDIT',
                 purpose: 'CANCEL_REFUND',
+                walletType: 'FIXED_DEPARTURE',
                 amount: booking.totalFare,
-                balanceAfterTransaction: agent.walletBalance,
+                balanceAfterTransaction: agent.fdWalletBalance,
                 referenceId: `REF-CAN-${booking._id}-${Date.now()}`,
                 status: 'SUCCESS',
                 remark: `Refund for Fixed Departure Booking Cancelled (${booking._id})${remarks ? ` - Reason: ${remarks}` : ''}`
@@ -324,8 +325,8 @@ const bookFlight = async (req, res) => {
             }
         }
 
-        if (agent.walletBalance < totalFare) {
-            return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+        if (agent.fdWalletBalance < totalFare) {
+            return res.status(400).json({ success: false, message: 'Insufficient Fixed Departure wallet balance. Please top-up your FD Wallet.' });
         }
 
         const processedPassengers = passengers.map(pax => ({
@@ -348,7 +349,7 @@ const bookFlight = async (req, res) => {
         });
 
         // Deduct Wallet
-        agent.walletBalance -= totalFare;
+        agent.fdWalletBalance -= totalFare;
         await agent.save();
 
         // Create Transaction
@@ -356,8 +357,9 @@ const bookFlight = async (req, res) => {
             agentId: agent._id,
             transactionType: 'DEBIT',
             purpose: 'TICKET_BOOKING',
+            walletType: 'FIXED_DEPARTURE',
             amount: totalFare,
-            balanceAfterTransaction: agent.walletBalance,
+            balanceAfterTransaction: agent.fdWalletBalance,
             referenceId: booking._id,
             status: 'SUCCESS',
             paymentMethod: 'WALLET',

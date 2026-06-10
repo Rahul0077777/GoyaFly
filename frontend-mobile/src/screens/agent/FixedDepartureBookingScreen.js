@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useThemeColors } from '../../utils/themeColors';
-import { fixedDepartureService } from '../../services/api';
+import { fixedDepartureService, authService } from '../../services/api';
 
 const parseTimeString = (timeStr) => {
     if (!timeStr) return null;
@@ -53,33 +53,86 @@ const calculateDuration = (deptTime, arrTime) => {
     }
 };
 
+const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 export default function FixedDepartureBookingScreen({ route, navigation }) {
     const t = useThemeColors();
-    const { flight } = route.params;
+    const { flight, pax: paxConfig } = route.params;
 
     const [step, setStep] = useState(1);
     const [isInternational, setIsInternational] = useState(flight?.isInternational || false);
-    const [passengers, setPassengers] = useState([
-        { firstName: '', lastName: '', dob: '', age: '', gender: 'Male', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' }
-    ]);
-    const [activeDobIndex, setActiveDobIndex] = useState(null);
+
+    // Dynamic checkout details from backend
+    const [latestFlight, setLatestFlight] = useState(flight);
+    const [agentBalance, setAgentBalance] = useState(0);
+    const [loadingBalance, setLoadingBalance] = useState(true);
+    const [loadingFlight, setLoadingFlight] = useState(true);
+
+    // DOB state tracking: activeDobIndex is passenger index to edit DOB, activeDobField is either 'dob' or 'passportExpiry'
+    const [activeDateIndex, setActiveDateIndex] = useState(null);
+    const [activeDateField, setActiveDateField] = useState('dob'); // 'dob' or 'passportExpiry'
+    
     const [submitting, setSubmitting] = useState(false);
+
+    // Pre-populate passenger list from search config (matching Web)
+    const [passengers, setPassengers] = useState(() => {
+        const initial = [];
+        const adultsCount = paxConfig?.adults || 1;
+        const childrenCount = paxConfig?.children || 0;
+        const infantsCount = paxConfig?.infants || 0;
+
+        for (let i = 0; i < adultsCount; i++) {
+            initial.push({ passengerType: 'Adult', gender: 'Male', firstName: '', lastName: '', dob: '', age: '', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' });
+        }
+        for (let i = 0; i < childrenCount; i++) {
+            initial.push({ passengerType: 'Child', gender: 'Male', firstName: '', lastName: '', dob: '', age: '', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' });
+        }
+        for (let i = 0; i < infantsCount; i++) {
+            initial.push({ passengerType: 'Infant', gender: 'Male', firstName: '', lastName: '', dob: '', age: '', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' });
+        }
+        return initial;
+    });
+
+    useEffect(() => {
+        const fetchDynamicDetails = async () => {
+            try {
+                // 1. Fetch live agent profile for real-time wallet balance verification
+                const balanceRes = await authService.getProfile();
+                if (balanceRes.success && balanceRes.data) {
+                    setAgentBalance(balanceRes.data.walletBalance || 0);
+                }
+
+                // 2. Query flight search dynamically using departure date to get fresh seat counts & price
+                const dateStr = flight.departureDate ? flight.departureDate.split('T')[0] : '';
+                const flightRes = await fixedDepartureService.searchFlights(flight.fromCity, flight.toCity, dateStr);
+                if (flightRes.success && flightRes.data) {
+                    const matchedFlight = flightRes.data.find(f => f._id === flight._id);
+                    if (matchedFlight) {
+                        setLatestFlight(matchedFlight);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load dynamic checkout data', error);
+            } finally {
+                setLoadingBalance(false);
+                setLoadingFlight(false);
+            }
+        };
+        fetchDynamicDetails();
+    }, [flight._id]);
 
     if (!flight) {
         navigation.goBack();
         return null;
     }
-
-    const handleAddPassenger = () => {
-        if (passengers.length >= flight.availableSeats) {
-            return Alert.alert('Seat Limit', `Only ${flight.availableSeats} seats available on this flight.`);
-        }
-        setPassengers([...passengers, { firstName: '', lastName: '', dob: '', age: '', gender: 'Male', mobileNumber: '', email: '', passportNumber: '', passportExpiry: '', nationality: 'IN' }]);
-    };
-
-    const handleRemovePassenger = (index) => {
-        setPassengers(passengers.filter((_, i) => i !== index));
-    };
 
     const handleInputChange = (index, field, value) => {
         const newPax = [...passengers];
@@ -95,14 +148,21 @@ export default function FixedDepartureBookingScreen({ route, navigation }) {
     };
 
     const validateStep2 = () => {
-        for (const p of passengers) {
-            if (!p.firstName || !p.lastName || !p.dob || !p.age || !p.mobileNumber || !p.email) {
-                Alert.alert('Missing Details', 'Please fill in First Name, Last Name, DOB, Age, Mobile Number, and Email ID for all travelers.');
+        for (let i = 0; i < passengers.length; i++) {
+            const p = passengers[i];
+            const isDobRequired = isInternational || p.passengerType === 'Child' || p.passengerType === 'Infant';
+            
+            if (!p.firstName || !p.lastName || !p.mobileNumber || !p.email) {
+                Alert.alert('Missing Details', `Please fill in First Name, Last Name, Mobile Number, and Email ID for Passenger ${i + 1}.`);
+                return false;
+            }
+            if (isDobRequired && !p.dob) {
+                Alert.alert('Missing DOB', `Date of Birth is required for Passenger ${i + 1} (${p.passengerType}).`);
                 return false;
             }
             if (isInternational) {
                 if (!p.passportNumber || !p.passportExpiry || !p.nationality) {
-                    Alert.alert('Passport Required', 'Please fill in Passport details for all international travelers.');
+                    Alert.alert('Passport Required', `Please fill in Passport details for Passenger ${i + 1}.`);
                     return false;
                 }
             }
@@ -115,478 +175,668 @@ export default function FixedDepartureBookingScreen({ route, navigation }) {
 
         setSubmitting(true);
         try {
-            const res = await fixedDepartureService.bookFlight(flight._id, passengers, isInternational);
+            const bookingData = {
+                flightId: latestFlight._id,
+                passengers,
+                isInternational,
+                adults: paxConfig?.adults || 1,
+                children: paxConfig?.children || 0,
+                infants: paxConfig?.infants || 0
+            };
+            const res = await fixedDepartureService.bookFlight(bookingData);
             if (res.success) {
                 Alert.alert('Booking Success', 'Your fixed departure booking request has been submitted successfully!');
                 navigation.replace('FixedDepartureHistory');
             }
         } catch (error) {
-            Alert.alert('Booking Failed', error.response?.data?.message || 'Operation failed');
+            Alert.alert('Booking Failed', error.response?.data?.message || 'Wallet deduction failed. Please check balance.');
         } finally {
             setSubmitting(false);
         }
     };
 
-    const totalFare = flight.fare * passengers.length;
+    const adultsCount = paxConfig?.adults || 1;
+    const childrenCount = paxConfig?.children || 0;
+    const infantsCount = paxConfig?.infants || 0;
+    const adultTotal = adultsCount * latestFlight.fare;
+    const childTotal = childrenCount * (latestFlight.childFare || 0);
+    const infantTotal = infantsCount * (latestFlight.infantFare || 0);
+    const totalFare = adultTotal + childTotal + infantTotal;
+
+    const openDatePicker = (index, field) => {
+        setActiveDateIndex(index);
+        setActiveDateField(field);
+    };
 
     return (
         <View style={{ flex: 1, backgroundColor: t.bg }}>
-            <StatusBar style="dark" />
+            <StatusBar style={t.isDark ? 'light' : 'dark'} />
             <SafeAreaView className="flex-1" edges={['top']}>
-                {/* Top Header */}
-                <View className="px-6 py-4 flex-row justify-between items-center border-b border-gray-100 bg-white">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-gray-50 rounded-2xl items-center justify-center border border-gray-100">
-                        <Ionicons name="chevron-back" size={20} color="#000" />
-                    </TouchableOpacity>
-                    <View className="items-center">
-                        <Text style={{ color: t.text }} className="text-lg font-black">Fixed Departure</Text>
-                        <Text style={{ color: t.textMuted }} className="font-bold uppercase text-[9px] tracking-widest">
-                            Step {step} of 3 • {step === 1 ? 'Flight Details' : step === 2 ? 'Travelers' : 'Review & Pay'}
-                        </Text>
+                
+                <View style={{ borderBottomColor: t.cardBorder, backgroundColor: t.card }} className="px-5 py-4 border-b">
+                    <View className="flex-row justify-between items-center mb-3.5">
+                        <TouchableOpacity 
+                            onPress={() => navigation.goBack()}
+                            style={{ backgroundColor: t.isDark ? '#1e293b' : '#f8fafc', borderColor: t.cardBorder }}
+                            className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl border"
+                        >
+                            <Ionicons name="arrow-back" size={13} color={t.textSecondary} />
+                            <Text style={{ color: t.textSecondary }} className="font-black uppercase text-[10px] tracking-widest">Exit Checkout</Text>
+                        </TouchableOpacity>
+                        <View style={{ backgroundColor: t.isDark ? 'rgba(240,126,33,0.1)' : 'rgba(29,65,113,0.06)', borderColor: t.isDark ? 'rgba(240,126,33,0.2)' : 'rgba(29,65,113,0.1)' }} className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg border">
+                            <MaterialCommunityIcons name="shield-airplane" size={14} color="#F07E21" />
+                            <Text style={{ color: t.isDark ? '#F07E21' : '#1D4171' }} className="font-black text-[10px] uppercase tracking-wider">Fixed Departure Portal</Text>
+                        </View>
                     </View>
-                    <View className="w-10 h-10 bg-blue-50 rounded-2xl items-center justify-center border border-blue-100">
-                        <MaterialCommunityIcons name="shield-check" size={20} color={t.primary} />
-                    </View>
-                </View>
 
-                {/* Progress Bar */}
-                <View className="bg-white px-6 py-3 border-b border-gray-100 flex-row justify-between items-center">
-                    <View className="flex-row items-center gap-2">
-                        <View className={`w-7 h-7 rounded-xl items-center justify-center ${step >= 1 ? 'bg-[#1D4171]' : 'bg-gray-100'}`}>
-                            <Text className={`font-black text-xs ${step >= 1 ? 'text-white' : 'text-gray-400'}`}>1</Text>
+                    <View className="flex-row justify-between items-center px-2">
+                        <View className="flex-row items-center gap-2">
+                            <View style={{ backgroundColor: step >= 1 ? '#1D4171' : (t.isDark ? '#1e293b' : '#f1f5f9') }} className="w-6.5 h-6.5 rounded-xl items-center justify-center shadow-xs">
+                                <Text style={{ color: step >= 1 ? '#ffffff' : t.textMuted }} className="font-black text-[11px]">1</Text>
+                            </View>
+                            <Text style={{ color: step >= 1 ? t.text : t.textMuted }} className="font-black text-[11px] uppercase tracking-wider">Itinerary</Text>
                         </View>
-                        <Text className={`font-bold text-xs ${step >= 1 ? 'text-[#1D4171]' : 'text-gray-400'}`}>Flight</Text>
-                    </View>
-                    <View className="h-[2px] bg-gray-200 flex-1 mx-3" />
-                    <View className="flex-row items-center gap-2">
-                        <View className={`w-7 h-7 rounded-xl items-center justify-center ${step >= 2 ? 'bg-[#1D4171]' : 'bg-gray-100'}`}>
-                            <Text className={`font-black text-xs ${step >= 2 ? 'text-white' : 'text-gray-400'}`}>2</Text>
+                        <View style={{ backgroundColor: step >= 2 ? '#1D4171' : (t.isDark ? '#334155' : '#e2e8f0') }} className="h-[1.5px] flex-1 mx-3" />
+                        <View className="flex-row items-center gap-2">
+                            <View style={{ backgroundColor: step >= 2 ? '#1D4171' : (t.isDark ? '#1e293b' : '#f1f5f9') }} className="w-6.5 h-6.5 rounded-xl items-center justify-center shadow-xs">
+                                <Text style={{ color: step >= 2 ? '#ffffff' : t.textMuted }} className="font-black text-[11px]">2</Text>
+                            </View>
+                            <Text style={{ color: step >= 2 ? t.text : t.textMuted }} className="font-black text-[11px] uppercase tracking-wider">Travelers</Text>
                         </View>
-                        <Text className={`font-bold text-xs ${step >= 2 ? 'text-[#1D4171]' : 'text-gray-400'}`}>Travelers</Text>
-                    </View>
-                    <View className="h-[2px] bg-gray-200 flex-1 mx-3" />
-                    <View className="flex-row items-center gap-2">
-                        <View className={`w-7 h-7 rounded-xl items-center justify-center ${step >= 3 ? 'bg-[#1D4171]' : 'bg-gray-100'}`}>
-                            <Text className={`font-black text-xs ${step >= 3 ? 'text-white' : 'text-gray-400'}`}>3</Text>
+                        <View style={{ backgroundColor: step >= 3 ? '#1D4171' : (t.isDark ? '#334155' : '#e2e8f0') }} className="h-[1.5px] flex-1 mx-3" />
+                        <View className="flex-row items-center gap-2">
+                            <View style={{ backgroundColor: step >= 3 ? '#1D4171' : (t.isDark ? '#1e293b' : '#f1f5f9') }} className="w-6.5 h-6.5 rounded-xl items-center justify-center shadow-xs">
+                                <Text style={{ color: step >= 3 ? '#ffffff' : t.textMuted }} className="font-black text-[11px]">3</Text>
+                            </View>
+                            <Text style={{ color: step >= 3 ? t.text : t.textMuted }} className="font-black text-[11px] uppercase tracking-wider">Pay</Text>
                         </View>
-                        <Text className={`font-bold text-xs ${step >= 3 ? 'text-[#1D4171]' : 'text-gray-400'}`}>Review</Text>
                     </View>
                 </View>
 
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                    <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+                    <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false}>
                         
-                        {/* STEP 1: FLIGHT DETAILS */}
-                        {step === 1 && (
-                            <View className="space-y-6">
-                                <View className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex-row items-center justify-between">
-                                    <Text className="text-amber-800 font-black text-xs uppercase tracking-wider">Available Seats</Text>
-                                    <View className="bg-amber-500 px-3 py-1 rounded-lg">
-                                        <Text className="text-white font-black text-xs">{flight.availableSeats} Seats Left</Text>
-                                    </View>
-                                </View>
-
-                                {/* Sector Toggle */}
-                                <View className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-                                    <Text className="text-[#1D4171] font-black text-base">Select Sector Type</Text>
-                                    <View className="flex-row gap-4">
-                                        <TouchableOpacity 
-                                            onPress={() => setIsInternational(false)}
-                                            className={`flex-1 p-4 rounded-2xl border-2 items-center ${!isInternational ? 'border-[#1D4171] bg-blue-50/20' : 'border-gray-100 bg-gray-50/50'}`}
-                                        >
-                                            <Text className="text-2xl mb-1">🇮🇳</Text>
-                                            <Text className={`font-black text-xs ${!isInternational ? 'text-[#1D4171]' : 'text-gray-400'}`}>Domestic</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity 
-                                            onPress={() => setIsInternational(true)}
-                                            className={`flex-1 p-4 rounded-2xl border-2 items-center ${isInternational ? 'border-[#1D4171] bg-blue-50/20' : 'border-gray-100 bg-gray-50/50'}`}
-                                        >
-                                            <Text className="text-2xl mb-1">🌐</Text>
-                                            <Text className={`font-black text-xs ${isInternational ? 'text-[#1D4171]' : 'text-gray-400'}`}>International</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                {/* Flight Itinerary Card */}
-                                <View className="bg-[#1D4171] p-6 rounded-[2.5rem] shadow-xl">
-                                    <View className="flex-row justify-between items-center border-b border-white/10 pb-4 mb-4">
-                                        <View>
-                                            <Text className="text-white font-black text-lg">{flight.airlineName}</Text>
-                                            <Text className="text-white/60 font-bold text-[10px] uppercase tracking-widest">{flight.flightNumber}</Text>
-                                        </View>
-                                        <View className="bg-[#F07E21] px-3 py-1.5 rounded-xl">
-                                            <Text className="text-white font-black text-[10px] uppercase tracking-widest">{isInternational ? 'Intl' : 'Dom'}</Text>
-                                        </View>
-                                    </View>
-                                    <View className="flex-row justify-between items-center mb-4">
-                                        <View>
-                                            <Text className="text-white text-3xl font-black">{flight.fromCity}</Text>
-                                            <Text className="text-[#F07E21] font-black text-sm">{flight.departureTime}</Text>
-                                        </View>
-                                        <View className="items-center">
-                                            <Text className="text-white/80 font-bold text-[10px] mb-1 tracking-wider">
-                                                {calculateDuration(flight.departureTime, flight.arrivalTime)}
-                                            </Text>
-                                            <MaterialCommunityIcons name="airplane" size={24} color="#F07E21" />
-                                            <Text className="text-white/60 font-black text-[9px] uppercase tracking-widest mt-1">Direct</Text>
-                                        </View>
-                                        <View className="items-end">
-                                            <Text className="text-white text-3xl font-black">{flight.toCity}</Text>
-                                            <Text className="text-[#F07E21] font-black text-sm">{flight.arrivalTime}</Text>
-                                        </View>
-                                    </View>
-                                    <Text className="text-white/60 text-xs font-bold text-center mt-2 border-t border-white/10 pt-4">
-                                        {new Date(flight.departureDate).toDateString()}
-                                    </Text>
-                                </View>
-
-                                {/* Rules Card */}
-                                <View className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-                                    <View className="flex-row items-center gap-3 border-b border-gray-100 pb-4">
-                                        <FontAwesome5 name="suitcase" size={20} color={t.primary} />
-                                        <Text className="font-black text-[#1D4171] text-base">Baggage & Fare Rules</Text>
-                                    </View>
-                                    <View className="space-y-2">
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">Cabin Baggage</Text>
-                                            <Text className="font-black text-gray-800 text-xs">7 KG per pax</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">Check-in Baggage</Text>
-                                            <Text className="font-black text-gray-800 text-xs">{isInternational ? '20 KG' : '15 KG'} per pax</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">Cancellation</Text>
-                                            <Text className="font-black text-red-500 text-xs uppercase">100% Non-Refundable</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">GST & Taxes</Text>
-                                            <Text className="font-black text-emerald-600 text-xs uppercase">Excluded / Not Applicable</Text>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Next Button */}
-                                <TouchableOpacity 
-                                    onPress={() => setStep(2)}
-                                    className="bg-[#1D4171] py-5 rounded-[2rem] items-center shadow-lg shadow-[#1D4171]/20 mt-4"
-                                >
-                                    <Text className="text-white font-black text-base uppercase tracking-widest">Continue to Travelers</Text>
-                                </TouchableOpacity>
+                        {loadingFlight || loadingBalance ? (
+                            <View className="flex-1 justify-center items-center py-20">
+                                <ActivityIndicator size="large" color="#1D4171" />
+                                <Text style={{ color: t.textSecondary }} className="font-black text-xs uppercase tracking-widest mt-4">Retrieving secure checkout details...</Text>
                             </View>
-                        )}
+                        ) : (
+                            <>
+                                {/* STEP 1: FLIGHT DETAILS & POLICY */}
+                                {step === 1 && (
+                                    <View className="space-y-4 pb-10">
+                                        <View className="mb-1">
+                                            <Text style={{ color: t.text }} className="text-xl font-black">Flight Itinerary & Policy</Text>
+                                            <Text style={{ color: t.textMuted }} className="font-bold uppercase text-[9px] tracking-widest mt-0.5">Review your selected Fixed Departure schedule and sector rules</Text>
+                                        </View>
 
-                        {/* STEP 2: PASSENGER DETAILS */}
-                        {step === 2 && (
-                            <View className="space-y-6">
-                                <View className="flex-row justify-between items-center mb-2">
-                                    <Text className="text-[#1D4171] font-black text-lg">Traveler Details</Text>
-                                    <TouchableOpacity 
-                                        onPress={handleAddPassenger}
-                                        className="flex-row items-center gap-1.5 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100"
-                                    >
-                                        <Ionicons name="add" size={16} color={t.primary} />
-                                        <Text className="text-[#1D4171] font-black text-[10px] uppercase tracking-wider">Add Traveler</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                        {/* Seats Left Banner / Insufficient Seats Warning */}
+                                        {latestFlight.availableSeats < (adultsCount + childrenCount) ? (
+                                            <View style={{ backgroundColor: t.isDark ? '#3b0f0f' : '#fef2f2', borderColor: t.isDark ? '#7f1d1d' : '#fecaca' }} className="p-4 rounded-2xl border flex-row items-center justify-between shadow-xs">
+                                                <View className="flex-row items-center gap-2 flex-1 mr-2">
+                                                    <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                                                    <Text style={{ color: t.isDark ? '#fca5a5' : '#b91c1c' }} className="font-black text-[11px] uppercase tracking-wider flex-1">
+                                                        Insufficient Seats (Only {latestFlight.availableSeats} left, you requested {adultsCount + childrenCount})
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <View style={{ backgroundColor: t.isDark ? '#2e1907' : '#fffbeb', borderColor: t.isDark ? '#78350f' : '#fef3c7' }} className="p-4 rounded-2xl border flex-row items-center justify-between shadow-xs">
+                                                <View className="flex-row items-center gap-2">
+                                                    <View className="w-2 h-2 rounded-full bg-amber-500" />
+                                                    <Text style={{ color: t.isDark ? '#f59e0b' : '#b45309' }} className="font-black text-[11px] uppercase tracking-wider">Seat Availability Status</Text>
+                                                </View>
+                                                <View className="bg-amber-500 px-3.5 py-1.5 rounded-xl shadow-xs">
+                                                    <Text className="text-white font-black text-xs">{latestFlight.availableSeats} Seats Left</Text>
+                                                </View>
+                                            </View>
+                                        )}
 
-                                {passengers.map((p, index) => (
-                                    <View key={index} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm mb-6 space-y-4">
-                                        <View className="flex-row justify-between items-center border-b border-gray-100 pb-4">
+                                        {/* Sector Details Option info */}
+                                        <View style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="p-5 rounded-3xl border shadow-xs">
                                             <View className="flex-row items-center gap-3">
-                                                <View className="w-8 h-8 bg-[#1D4171] rounded-xl items-center justify-center">
-                                                    <Text className="text-white font-black text-xs">{index + 1}</Text>
-                                                </View>
-                                                <Text className="font-black text-[#1D4171] text-base">Passenger {index + 1}</Text>
-                                            </View>
-                                            {passengers.length > 1 && (
-                                                <TouchableOpacity onPress={() => handleRemovePassenger(index)} className="bg-red-50 p-2 rounded-xl">
-                                                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-
-                                        <View className="space-y-4 pt-2">
-                                            <View className="flex-row gap-4">
-                                                <View className="flex-1">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">First Name</Text>
-                                                    <TextInput 
-                                                        className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-800 border border-gray-100"
-                                                        placeholder="e.g. John"
-                                                        value={p.firstName}
-                                                        onChangeText={text => handleInputChange(index, 'firstName', text)}
-                                                    />
+                                                <View style={{ backgroundColor: '#1D4171' }} className="w-10 h-10 rounded-xl items-center justify-center shadow-xs">
+                                                    <Text className="text-lg">{isInternational ? '🌐' : '🇮🇳'}</Text>
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Last Name</Text>
-                                                    <TextInput 
-                                                        className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-800 border border-gray-100"
-                                                        placeholder="e.g. Doe"
-                                                        value={p.lastName}
-                                                        onChangeText={text => handleInputChange(index, 'lastName', text)}
-                                                    />
-                                                </View>
-                                            </View>
-                                            <View className="flex-row gap-4">
-                                                <View className="flex-1">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">DOB</Text>
-                                                    <TouchableOpacity 
-                                                        onPress={() => setActiveDobIndex(index)}
-                                                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`font-bold ${p.dob ? 'text-gray-800' : 'text-gray-400'}`}>
-                                                            {p.dob || 'Select Date'}
+                                                    <View className="flex-row items-center gap-2">
+                                                        <Text style={{ color: t.text }} className="font-black text-sm">
+                                                            {isInternational ? 'International Route' : 'Domestic Route'}
                                                         </Text>
-                                                        <Ionicons name="calendar-outline" size={18} color="#94A3B8" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <View className="w-20">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Age</Text>
-                                                    <TextInput 
-                                                        className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-800 border border-gray-100"
-                                                        placeholder="28"
-                                                        keyboardType="numeric"
-                                                        value={p.age}
-                                                        onChangeText={text => handleInputChange(index, 'age', text)}
-                                                    />
+                                                        <View style={{ backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }} className="px-2 py-0.5 rounded border">
+                                                            <Text className="text-emerald-800 text-[8px] font-black uppercase tracking-widest">Auto-Detected</Text>
+                                                        </View>
+                                                    </View>
+                                                    <Text style={{ color: t.textSecondary }} className="text-[10px] font-bold mt-0.5 leading-relaxed">
+                                                        {isInternational ? 'Passport & Visa details required for booking manifest' : 'Valid Govt. ID required for check-in verification'}
+                                                    </Text>
                                                 </View>
                                             </View>
-                                            <View>
-                                                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Gender</Text>
-                                                <View className="flex-row bg-gray-50 rounded-2xl p-1 border border-gray-100">
-                                                    {['Male', 'Female'].map(g => (
-                                                        <TouchableOpacity 
-                                                            key={g}
-                                                            onPress={() => handleInputChange(index, 'gender', g)}
-                                                            className={`flex-1 py-3 items-center rounded-xl ${p.gender === g ? 'bg-white shadow-sm' : ''}`}
-                                                        >
-                                                            <Text className={`text-[10px] font-black uppercase ${p.gender === g ? 'text-[#1D4171]' : 'text-gray-300'}`}>{g}</Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                            <View className="flex-row gap-4">
-                                                <View className="flex-1">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Mobile No (Required)</Text>
-                                                    <TextInput 
-                                                        className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-800 border border-gray-100"
-                                                        placeholder="e.g. 9876543210"
-                                                        keyboardType="phone-pad"
-                                                        value={p.mobileNumber}
-                                                        onChangeText={text => handleInputChange(index, 'mobileNumber', text)}
-                                                    />
-                                                </View>
-                                                <View className="flex-1">
-                                                    <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Email (Required)</Text>
-                                                    <TextInput 
-                                                        className="bg-gray-50 p-4 rounded-2xl font-bold text-gray-800 border border-gray-100"
-                                                        placeholder="traveler@example.com"
-                                                        keyboardType="email-address"
-                                                        value={p.email}
-                                                        onChangeText={text => handleInputChange(index, 'email', text)}
-                                                    />
-                                                </View>
-                                            </View>
+                                        </View>
 
-                                            {/* International Passport Fields */}
-                                            {isInternational && (
-                                                <View className="space-y-4 pt-4 border-t border-gray-100">
-                                                    <Text className="text-xs font-black text-[#F07E21] uppercase tracking-widest">Passport Information</Text>
+                                        {/* Flight Itinerary Card */}
+                                        <View style={{ backgroundColor: '#1D4171' }} className="p-6 rounded-[2rem] shadow-md relative overflow-hidden">
+                                            <View className="absolute -right-8 -bottom-8 opacity-10 select-none">
+                                                <FontAwesome5 name="plane" size={100} color="#ffffff" />
+                                            </View>
+                                            <View className="flex-row justify-between items-center border-b border-white/10 pb-3.5 mb-4">
+                                                <View className="flex-row items-center gap-2">
+                                                    <Text className="text-lg">✈️</Text>
                                                     <View>
-                                                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Passport Number</Text>
-                                                        <TextInput 
-                                                            className="bg-blue-50/30 p-4 rounded-2xl font-bold text-gray-800 border border-blue-100 uppercase"
-                                                            placeholder="A1234567"
-                                                            value={p.passportNumber}
-                                                            onChangeText={text => handleInputChange(index, 'passportNumber', text)}
-                                                        />
-                                                    </View>
-                                                    <View className="flex-row gap-4">
-                                                        <View className="flex-1">
-                                                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Expiry Date</Text>
-                                                            <TextInput 
-                                                                className="bg-blue-50/30 p-4 rounded-2xl font-bold text-gray-800 border border-blue-100"
-                                                                placeholder="DD-MM-YYYY"
-                                                                value={p.passportExpiry}
-                                                                onChangeText={text => handleInputChange(index, 'passportExpiry', text)}
-                                                            />
-                                                        </View>
-                                                        <View className="flex-1">
-                                                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nationality</Text>
-                                                            <TextInput 
-                                                                className="bg-blue-50/30 p-4 rounded-2xl font-bold text-gray-800 border border-blue-100 uppercase"
-                                                                placeholder="IN"
-                                                                value={p.nationality}
-                                                                onChangeText={text => handleInputChange(index, 'nationality', text)}
-                                                            />
-                                                        </View>
+                                                        <Text className="text-white font-black text-base">{latestFlight.airlineName}</Text>
+                                                        <Text className="text-white/60 font-bold text-[9px] uppercase tracking-widest">Flight No: {latestFlight.flightNumber}</Text>
                                                     </View>
                                                 </View>
-                                            )}
+                                                <View className="bg-[#F07E21] px-3 py-1 rounded-lg">
+                                                    <Text className="text-white font-black text-[9px] uppercase tracking-widest">{isInternational ? 'Intl Sector' : 'Dom Sector'}</Text>
+                                                </View>
+                                            </View>
+
+                                            <View className="flex-row justify-between items-center">
+                                                <View className="flex-1">
+                                                    <Text className="text-white/70 font-black text-[10px] uppercase tracking-wider mb-1">Departure</Text>
+                                                    <Text className="text-white text-2xl font-black capitalize" numberOfLines={1}>{latestFlight.fromCity}</Text>
+                                                    <Text className="text-[#F07E21] font-black text-lg mt-0.5">{latestFlight.departureTime}</Text>
+                                                    <Text className="text-white/80 text-[10px] font-bold mt-1">{formatDisplayDate(latestFlight.departureDate)}</Text>
+                                                </View>
+                                                <View className="items-center px-3">
+                                                    <Text className="text-white font-bold text-xs mb-1.5">
+                                                        {calculateDuration(latestFlight.departureTime, latestFlight.arrivalTime)}
+                                                    </Text>
+                                                    <View className="flex-row items-center justify-center w-14 mb-1">
+                                                        <View className="h-[1.5px] bg-white/20 flex-1" />
+                                                        <FontAwesome5 name="plane-departure" size={12} color="#F07E21" className="mx-1" />
+                                                        <View className="h-[1.5px] bg-white/20 flex-1" />
+                                                    </View>
+                                                    <Text className="text-white/50 font-black text-[8px] uppercase tracking-widest">Direct</Text>
+                                                </View>
+                                                <View className="flex-1 items-end">
+                                                    <Text className="text-white/70 font-black text-[10px] uppercase tracking-wider mb-1">Arrival</Text>
+                                                    <Text className="text-white text-2xl font-black capitalize" numberOfLines={1}>{latestFlight.toCity}</Text>
+                                                    <Text className="text-[#F07E21] font-black text-lg mt-0.5">{latestFlight.arrivalTime}</Text>
+                                                    <Text className="text-white/80 text-[10px] font-bold mt-1">{formatDisplayDate(latestFlight.departureDate)}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Rules Card */}
+                                        <View style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="p-5.5 rounded-3xl border shadow-xs space-y-4">
+                                            <View className="flex-row items-center gap-2.5 border-b pb-3" style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }}>
+                                                <FontAwesome5 name="suitcase" size={16} color={t.primary} />
+                                                <Text style={{ color: t.text }} className="font-black text-sm">Baggage & Cancellation Rules</Text>
+                                            </View>
+                                            
+                                            <View className="space-y-3">
+                                                <View className="flex-row justify-between items-start">
+                                                    <View className="flex-1">
+                                                        <Text style={{ color: t.textSecondary }} className="font-black text-xs">Baggage Allowance</Text>
+                                                        <Text style={{ color: t.textMuted }} className="text-[10px] font-bold mt-0.5">• Cabin Baggage: 7 KG</Text>
+                                                        <Text style={{ color: t.textMuted }} className="text-[10px] font-bold">• Check-in: {isInternational ? '30 KG (International)' : '15 KG (Domestic)'}</Text>
+                                                    </View>
+                                                </View>
+                                                
+                                                <View className="h-[1px]" style={{ backgroundColor: t.isDark ? '#334155' : '#f1f5f9' }} />
+                                                
+                                                <View className="flex-row justify-between items-start">
+                                                    <View className="flex-1">
+                                                        <Text style={{ color: t.textSecondary }} className="font-black text-xs">Cancellation Policy</Text>
+                                                        <Text className="text-red-500 text-[10px] font-bold mt-0.5">• Ticket: 100% Non-Refundable</Text>
+                                                        <Text style={{ color: t.textMuted }} className="text-[10px] font-bold">• Date Change: Not Permitted</Text>
+                                                        <Text className="text-emerald-600 text-[10px] font-bold">• GST Status: Excluded / Pre-Settled</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Next Button */}
+                                        <View className="pt-2">
+                                            <View className="flex-row justify-between items-center mb-4">
+                                                <View>
+                                                    <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest">Base Fare Per Passenger</Text>
+                                                    <Text style={{ color: t.text }} className="text-xl font-black">₹{latestFlight.fare}</Text>
+                                                </View>
+                                                <Text className="text-emerald-500 font-black text-[10px] uppercase tracking-widest">No GST Applicable</Text>
+                                            </View>
+                                            
+                                            <TouchableOpacity 
+                                                disabled={latestFlight.availableSeats < (adultsCount + childrenCount)}
+                                                onPress={() => setStep(2)}
+                                                style={{ backgroundColor: latestFlight.availableSeats < (adultsCount + childrenCount) ? '#94a3b8' : '#1D4171' }}
+                                                className="py-4.5 rounded-2xl items-center shadow-lg active:opacity-90 flex-row justify-center gap-2"
+                                            >
+                                                <Text className="text-white font-black text-xs uppercase tracking-widest">
+                                                    {latestFlight.availableSeats < (adultsCount + childrenCount) ? 'INSUFFICIENT SEATS' : 'Continue to Travelers'}
+                                                </Text>
+                                                <Ionicons name="arrow-forward" size={14} color="white" />
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
-                                ))}
+                                )}
 
-                                {/* Navigation Buttons */}
-                                <View className="flex-row gap-4 mt-4">
-                                    <TouchableOpacity 
-                                        onPress={() => setStep(1)}
-                                        className="flex-1 bg-gray-100 py-5 rounded-[2rem] items-center border border-gray-200"
-                                    >
-                                        <Text className="text-gray-600 font-black text-xs uppercase tracking-widest">Back</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        onPress={() => {
-                                            if (validateStep2()) setStep(3);
-                                        }}
-                                        className="flex-[2] bg-[#1D4171] py-5 rounded-[2rem] items-center shadow-lg shadow-[#1D4171]/20"
-                                    >
-                                        <Text className="text-white font-black text-xs uppercase tracking-widest">Continue to Review</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
+                                {/* STEP 2: TRAVELERS MANIFEST */}
+                                {step === 2 && (
+                                    <View className="space-y-5 pb-10">
+                                        <View className="mb-1">
+                                            <Text style={{ color: t.text }} className="text-xl font-black">Travelers Information</Text>
+                                            <Text style={{ color: t.textMuted }} className="font-bold uppercase text-[9px] tracking-widest mt-0.5">
+                                                {isInternational ? 'International Sector: Passport details are mandatory' : 'Domestic Sector: Enter names as per valid Govt. ID'}
+                                            </Text>
+                                        </View>
 
-                        {/* STEP 3: REVIEW & PAYMENT */}
-                        {step === 3 && (
-                            <View className="space-y-6">
-                                <View className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-                                    <Text className="text-[#1D4171] font-black text-lg border-b border-gray-100 pb-4">Booking Summary</Text>
-                                    
-                                    <View className="space-y-3 border-b border-gray-100 pb-4">
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-400 font-bold text-xs uppercase tracking-widest">Flight</Text>
-                                            <Text className="font-black text-gray-800 text-sm">{flight.airlineName} ({flight.flightNumber})</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-400 font-bold text-xs uppercase tracking-widest">Route</Text>
-                                            <Text className="font-black text-gray-800 text-sm">{flight.fromCity} ✈️ {flight.toCity}</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-400 font-bold text-xs uppercase tracking-widest">Date</Text>
-                                            <Text className="font-black text-gray-800 text-sm">{new Date(flight.departureDate).toLocaleDateString()}</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-400 font-bold text-xs uppercase tracking-widest">Sector</Text>
-                                            <Text className="font-black text-[#F07E21] text-xs uppercase tracking-wider">{isInternational ? 'International' : 'Domestic'}</Text>
+                                        {passengers.map((p, index) => {
+                                            const isDobRequired = isInternational || p.passengerType === 'Child' || p.passengerType === 'Infant';
+                                            return (
+                                                <View key={index} style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="p-5.5 rounded-3xl border shadow-xs space-y-4">
+                                                    
+                                                    <View style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }} className="flex-row justify-between items-center border-b pb-3">
+                                                        <View className="flex-row items-center gap-2">
+                                                            <View style={{ backgroundColor: '#1D4171' }} className="w-6.5 h-6.5 rounded-lg items-center justify-center">
+                                                                <Text className="text-white font-black text-[11px]">{index + 1}</Text>
+                                                            </View>
+                                                            <Text style={{ color: t.text }} className="font-black text-sm">{p.passengerType} Traveler</Text>
+                                                        </View>
+                                                    </View>
+
+                                                    <View className="space-y-1">
+                                                        <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1 mb-1">Gender</Text>
+                                                        <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row rounded-2xl p-1 border">
+                                                            {['Male', 'Female', 'Other'].map(genderOpt => {
+                                                                const isSel = p.gender === genderOpt;
+                                                                return (
+                                                                    <TouchableOpacity 
+                                                                        key={genderOpt}
+                                                                        onPress={() => handleInputChange(index, 'gender', genderOpt)}
+                                                                        style={{ backgroundColor: isSel ? '#1D4171' : 'transparent' }}
+                                                                        className="flex-1 py-2.5 items-center rounded-xl"
+                                                                    >
+                                                                        <Text style={{ color: isSel ? '#ffffff' : t.textSecondary }} className="text-[10px] font-black uppercase tracking-wider">{genderOpt}</Text>
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                        </View>
+                                                    </View>
+
+                                                    <View className="flex-row gap-3">
+                                                        <View className="flex-1 space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">First Name</Text>
+                                                            <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row items-center border rounded-2xl px-3.5 py-3">
+                                                                <Ionicons name="person-outline" size={15} color={t.textMuted} className="mr-2" />
+                                                                <TextInput 
+                                                                    style={{ color: t.text }} 
+                                                                    className="flex-1 font-bold text-xs"
+                                                                    placeholder="First name"
+                                                                    placeholderTextColor={t.placeholder}
+                                                                    value={p.firstName}
+                                                                    onChangeText={text => handleInputChange(index, 'firstName', text)}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                        <View className="flex-1 space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">Last Name</Text>
+                                                            <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row items-center border rounded-2xl px-3.5 py-3">
+                                                                <Ionicons name="person-outline" size={15} color={t.textMuted} className="mr-2" />
+                                                                <TextInput 
+                                                                    style={{ color: t.text }} 
+                                                                    className="flex-1 font-bold text-xs"
+                                                                    placeholder="Last name"
+                                                                    placeholderTextColor={t.placeholder}
+                                                                    value={p.lastName}
+                                                                    onChangeText={text => handleInputChange(index, 'lastName', text)}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                    </View>
+
+                                                    <View className="flex-row gap-3">
+                                                        <View className="flex-[2] space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">
+                                                                Date of Birth {isDobRequired ? '(Required)' : '(Optional)'}
+                                                            </Text>
+                                                            <TouchableOpacity 
+                                                                onPress={() => openDatePicker(index, 'dob')}
+                                                                style={{ backgroundColor: t.input, borderColor: t.inputBorder }}
+                                                                className="flex-row items-center border rounded-2xl px-3.5 py-3 justify-between"
+                                                            >
+                                                                <View className="flex-row items-center flex-1">
+                                                                    <Ionicons name="calendar-outline" size={15} color={t.textMuted} className="mr-2" />
+                                                                    <Text style={{ color: p.dob ? t.text : t.placeholder }} className="font-bold text-xs">
+                                                                        {p.dob ? formatDisplayDate(p.dob) : 'Select DOB'}
+                                                                    </Text>
+                                                                </View>
+                                                                <Ionicons name="chevron-down" size={14} color={t.textMuted} />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        <View className="flex-1 space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">Age</Text>
+                                                            <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row items-center border rounded-2xl px-3.5 py-3">
+                                                                <TextInput 
+                                                                    style={{ color: t.text }} 
+                                                                    className="flex-1 font-bold text-xs text-center"
+                                                                    placeholder="Age"
+                                                                    placeholderTextColor={t.placeholder}
+                                                                    keyboardType="numeric"
+                                                                    value={p.age}
+                                                                    onChangeText={text => handleInputChange(index, 'age', text)}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                    </View>
+
+                                                    <View className="space-y-3">
+                                                        <View className="space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">Mobile Number</Text>
+                                                            <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row items-center border rounded-2xl px-3.5 py-3">
+                                                                <Ionicons name="call-outline" size={15} color={t.textMuted} className="mr-2" />
+                                                                <TextInput 
+                                                                    style={{ color: t.text }} 
+                                                                    className="flex-1 font-bold text-xs"
+                                                                    placeholder="Mobile Number"
+                                                                    placeholderTextColor={t.placeholder}
+                                                                    keyboardType="phone-pad"
+                                                                    value={p.mobileNumber}
+                                                                    onChangeText={text => handleInputChange(index, 'mobileNumber', text)}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                        
+                                                        <View className="space-y-1">
+                                                            <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest ml-1">Email Address</Text>
+                                                            <View style={{ backgroundColor: t.input, borderColor: t.inputBorder }} className="flex-row items-center border rounded-2xl px-3.5 py-3">
+                                                                <Ionicons name="mail-outline" size={15} color={t.textMuted} className="mr-2" />
+                                                                <TextInput 
+                                                                    style={{ color: t.text }} 
+                                                                    className="flex-1 font-bold text-xs"
+                                                                    placeholder="traveler@email.com"
+                                                                    placeholderTextColor={t.placeholder}
+                                                                    keyboardType="email-address"
+                                                                    value={p.email}
+                                                                    onChangeText={text => handleInputChange(index, 'email', text)}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                    </View>
+
+                                                    {isInternational && (
+                                                        <View style={{ backgroundColor: t.isDark ? 'rgba(72,160,212,0.06)' : 'rgba(29,65,113,0.03)', borderColor: t.isDark ? '#1e3a8a' : '#bfdbfe' }} className="p-4 rounded-2xl border space-y-3.5 mt-2">
+                                                            <Text className="text-[10px] font-black text-[#F07E21] uppercase tracking-widest">Passport Details</Text>
+                                                            
+                                                            <View className="space-y-1">
+                                                                <Text style={{ color: t.textMuted }} className="text-[9px] font-black uppercase tracking-widest ml-1">Passport Number</Text>
+                                                                <View style={{ backgroundColor: t.card, borderColor: t.isDark ? '#334155' : '#bfdbfe' }} className="flex-row items-center border rounded-xl px-3.5 py-2.5">
+                                                                    <Ionicons name="card-outline" size={14} color={t.textMuted} className="mr-2" />
+                                                                    <TextInput 
+                                                                        style={{ color: t.text }} 
+                                                                        className="flex-1 font-bold text-xs uppercase"
+                                                                        placeholder="e.g. A1234567"
+                                                                        placeholderTextColor={t.placeholder}
+                                                                        value={p.passportNumber}
+                                                                        onChangeText={text => handleInputChange(index, 'passportNumber', text)}
+                                                                    />
+                                                                </View>
+                                                            </View>
+
+                                                            <View className="flex-row gap-3">
+                                                                <View className="flex-1 space-y-1">
+                                                                    <Text style={{ color: t.textMuted }} className="text-[9px] font-black uppercase tracking-widest ml-1">Expiry Date</Text>
+                                                                    <TouchableOpacity 
+                                                                        onPress={() => openDatePicker(index, 'passportExpiry')}
+                                                                        style={{ backgroundColor: t.card, borderColor: t.isDark ? '#334155' : '#bfdbfe' }}
+                                                                        className="flex-row items-center border rounded-xl px-3 py-2.5 justify-between"
+                                                                    >
+                                                                        <Text style={{ color: p.passportExpiry ? t.text : t.placeholder }} className="font-bold text-[11px]">
+                                                                            {p.passportExpiry ? formatDisplayDate(p.passportExpiry) : 'Select Expiry'}
+                                                                        </Text>
+                                                                        <Ionicons name="calendar-outline" size={13} color={t.textMuted} />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                                <View className="flex-1 space-y-1">
+                                                                    <Text style={{ color: t.textMuted }} className="text-[9px] font-black uppercase tracking-widest ml-1">Nationality</Text>
+                                                                    <View style={{ backgroundColor: t.card, borderColor: t.isDark ? '#334155' : '#bfdbfe' }} className="flex-row items-center border rounded-xl px-3.5 py-2.5">
+                                                                        <Ionicons name="globe-outline" size={14} color={t.textMuted} className="mr-2" />
+                                                                        <TextInput 
+                                                                            style={{ color: t.text }} 
+                                                                            className="flex-1 font-bold text-xs uppercase"
+                                                                            placeholder="IN"
+                                                                            placeholderTextColor={t.placeholder}
+                                                                            value={p.nationality}
+                                                                            onChangeText={text => handleInputChange(index, 'nationality', text)}
+                                                                        />
+                                                                    </View>
+                                                                </View>
+                                                            </View>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
+
+                                        <View className="flex-row gap-4.5 pt-2">
+                                            <TouchableOpacity 
+                                                onPress={() => setStep(1)}
+                                                style={{ backgroundColor: t.isDark ? '#1e293b' : '#f1f5f9', borderColor: t.cardBorder }}
+                                                className="flex-1 py-4 rounded-2xl items-center border"
+                                            >
+                                                <Text style={{ color: t.text }} className="font-black text-xs uppercase tracking-widest">Back</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                onPress={() => {
+                                                    if (validateStep2()) setStep(3);
+                                                }}
+                                                style={{ backgroundColor: '#1D4171' }}
+                                                className="flex-[2] py-4 rounded-2xl items-center shadow-lg shadow-[#1D4171]/20 flex-row justify-center gap-1.5"
+                                            >
+                                                <Text className="text-white font-black text-xs uppercase tracking-widest">Review Itinerary</Text>
+                                                <Ionicons name="arrow-forward" size={14} color="white" />
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
+                                )}
 
-                                    <Text className="text-[#1D4171] font-black text-base pt-2">Travelers ({passengers.length})</Text>
-                                    <View className="space-y-3">
-                                        {passengers.map((p, idx) => (
-                                            <View key={idx} className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                {/* STEP 3: REVIEW & PAYMENT */}
+                                {step === 3 && (
+                                    <View className="space-y-5 pb-10">
+                                        <View className="mb-1">
+                                            <Text style={{ color: t.text }} className="text-xl font-black">Review & Confirm Booking</Text>
+                                            <Text style={{ color: t.textMuted }} className="font-bold uppercase text-[9px] tracking-widest mt-0.5">Final verification of flight itinerary, passenger manifest, and wallet deduction</Text>
+                                        </View>
+
+                                        {/* Itinerary Summary Card */}
+                                        <View style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="p-5.5 rounded-3xl border shadow-xs space-y-4">
+                                            <Text style={{ color: t.text }} className="font-black text-sm border-b pb-3 mb-1" style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }}>Flight Itinerary Summary</Text>
+                                            
+                                            <View className="space-y-3 pb-1">
                                                 <View className="flex-row justify-between items-center">
-                                                    <Text className="font-black text-gray-800 text-sm">{p.firstName} {p.lastName}</Text>
-                                                    <Text className="font-bold text-gray-400 text-xs">{p.gender} • DOB: {p.dob} ({p.age} yrs)</Text>
+                                                    <Text style={{ color: t.textMuted }} className="font-bold text-xs uppercase tracking-wider">Airline</Text>
+                                                    <Text style={{ color: t.text }} className="font-black text-sm">{latestFlight.airlineName} ({latestFlight.flightNumber})</Text>
                                                 </View>
-                                                {isInternational && (
-                                                    <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-gray-200/60">
-                                                        <Text className="text-[10px] font-bold text-gray-500 uppercase">Passport: {p.passportNumber}</Text>
-                                                        <Text className="text-[10px] font-bold text-gray-500 uppercase">Exp: {p.passportExpiry}</Text>
+                                                <View className="flex-row justify-between items-center">
+                                                    <Text style={{ color: t.textMuted }} className="font-bold text-xs uppercase tracking-wider">Sector</Text>
+                                                    <Text style={{ color: t.text }} className="font-black text-sm capitalize">{latestFlight.fromCity} ✈️ {latestFlight.toCity}</Text>
+                                                </View>
+                                                <View className="flex-row justify-between items-center">
+                                                    <Text style={{ color: t.textMuted }} className="font-bold text-xs uppercase tracking-wider">Date & Time</Text>
+                                                    <Text style={{ color: t.text }} className="font-black text-xs">{formatDisplayDate(latestFlight.departureDate)} • {latestFlight.departureTime}</Text>
+                                                </View>
+                                                <View className="flex-row justify-between items-center">
+                                                    <Text style={{ color: t.textMuted }} className="font-bold text-xs uppercase tracking-wider">Sector Type</Text>
+                                                    <Text className="font-black text-[#F07E21] text-xs uppercase tracking-wider">{isInternational ? 'International' : 'Domestic'}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Passengers Manifest Summary */}
+                                        <View style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="p-5.5 rounded-3xl border shadow-xs space-y-4">
+                                            <Text style={{ color: t.text }} className="font-black text-sm border-b pb-3" style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }}>Passenger Manifest ({passengers.length})</Text>
+                                            <View className="space-y-3">
+                                                {passengers.map((p, idx) => (
+                                                    <View key={idx} style={{ backgroundColor: t.isDark ? '#1e293b' : '#f9fafb', borderColor: t.cardBorder }} className="p-4 rounded-2xl border">
+                                                        <View className="flex-row justify-between items-center">
+                                                            <View className="flex-row items-center gap-2">
+                                                                <View style={{ backgroundColor: '#1D4171' }} className="w-5.5 h-5.5 rounded-md items-center justify-center">
+                                                                    <Text className="text-white font-black text-[10px]">{idx + 1}</Text>
+                                                                </View>
+                                                                <Text style={{ color: t.text }} className="font-black text-sm">{p.firstName} {p.lastName}</Text>
+                                                            </View>
+                                                            <Text style={{ color: t.textSecondary }} className="font-bold text-[11px]">{p.passengerType}</Text>
+                                                        </View>
+                                                        <Text style={{ color: t.textMuted }} className="text-[10px] font-bold mt-1.5 ml-7">
+                                                            {p.gender} • DOB: {p.dob ? formatDisplayDate(p.dob) : 'N/A'} {p.age ? `(${p.age} yrs)` : ''}
+                                                        </Text>
+                                                        {isInternational && (
+                                                            <View style={{ borderTopColor: t.isDark ? '#334155' : '#e2e8f0' }} className="flex-row justify-between items-center mt-2.5 pt-2 ml-7 border-t">
+                                                                <Text style={{ color: t.textMuted }} className="text-[9px] font-bold uppercase">Passport: {p.passportNumber}</Text>
+                                                                <Text style={{ color: t.textMuted }} className="text-[9px] font-bold uppercase">Exp: {p.passportExpiry ? formatDisplayDate(p.passportExpiry) : 'N/A'}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+
+                                        {/* Cost Breakdown & Wallet Settlement Card */}
+                                        <View style={{ backgroundColor: t.card, borderColor: '#1D4171' }} className="p-6 rounded-3xl border-2 shadow-xl space-y-4">
+                                            <View className="flex-row justify-between items-center border-b pb-3.5" style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }}>
+                                                <Text style={{ color: t.text }} className="font-black text-base">Payment Breakup</Text>
+                                                <View style={{ backgroundColor: '#ecfdf5' }} className="px-2 py-0.5 rounded">
+                                                    <Text className="text-emerald-800 text-[8px] font-black uppercase tracking-widest">Instant Booking</Text>
+                                                </View>
+                                            </View>
+                                            
+                                            <View className="space-y-3 pb-3.5 border-b" style={{ borderBottomColor: t.isDark ? '#334155' : '#f1f5f9' }}>
+                                                {adultsCount > 0 && (
+                                                    <View className="flex-row justify-between items-center">
+                                                        <Text style={{ color: t.textMuted }} className="font-bold text-xs">Adults Fare ({adultsCount}x)</Text>
+                                                        <Text style={{ color: t.text }} className="font-black text-xs">₹{adultTotal}</Text>
                                                     </View>
                                                 )}
+                                                {childrenCount > 0 && (
+                                                    <View className="flex-row justify-between items-center">
+                                                        <Text style={{ color: t.textMuted }} className="font-bold text-xs">Children Fare ({childrenCount}x)</Text>
+                                                        <Text style={{ color: t.text }} className="font-black text-xs">₹{childTotal}</Text>
+                                                    </View>
+                                                )}
+                                                {infantsCount > 0 && (
+                                                    <View className="flex-row justify-between items-center">
+                                                        <Text style={{ color: t.textMuted }} className="font-bold text-xs">Infants Fare ({infantsCount}x)</Text>
+                                                        <Text style={{ color: t.text }} className="font-black text-xs">₹{infantTotal}</Text>
+                                                    </View>
+                                                )}
+                                                <View className="flex-row justify-between items-center">
+                                                    <Text style={{ color: t.textMuted }} className="font-bold text-xs">GST & Surcharge</Text>
+                                                    <Text className="font-black text-emerald-600 text-[10px] uppercase tracking-wider">Pre-Settled / Nil</Text>
+                                                </View>
                                             </View>
-                                        ))}
-                                    </View>
-                                </View>
 
-                                {/* Payment Breakdown Card */}
-                                <View className="bg-white p-6 rounded-[2.5rem] border-2 border-[#1D4171] shadow-xl space-y-4">
-                                    <Text className="text-[#1D4171] font-black text-lg border-b border-gray-100 pb-4">Payment Calculation</Text>
-                                    
-                                    <View className="space-y-3 border-b border-gray-100 pb-4">
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">Fare per seat</Text>
-                                            <Text className="font-black text-gray-800 text-sm">₹{flight.fare}</Text>
+                                            <View className="flex-row justify-between items-center pt-1.5">
+                                                <View>
+                                                    <Text style={{ color: t.textMuted }} className="font-black text-[9px] uppercase tracking-widest">Total Net Payable</Text>
+                                                    <Text style={{ color: t.text }} className="text-2xl font-black">₹{totalFare}</Text>
+                                                </View>
+                                                <View className="items-end">
+                                                    <Text style={{ color: t.textMuted }} className="font-black text-[9px] uppercase tracking-widest mb-0.5">Your Balance</Text>
+                                                    <Text style={{ color: agentBalance < totalFare ? '#ef4444' : '#10b981' }} className="font-black text-sm">
+                                                        {loadingBalance ? '...' : `₹${agentBalance.toLocaleString('en-IN')}`}
+                                                    </Text>
+                                                </View>
+                                            </View>
                                         </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">Travelers</Text>
-                                            <Text className="font-black text-gray-800 text-sm">x{passengers.length}</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-center">
-                                            <Text className="text-gray-500 font-bold text-xs">GST & Taxes</Text>
-                                            <Text className="font-black text-emerald-600 text-xs uppercase tracking-wider">Not Applicable / Excluded</Text>
-                                        </View>
-                                    </View>
 
-                                    <View className="flex-row justify-between items-center pt-2">
-                                        <View>
-                                            <Text className="text-gray-400 font-black text-[10px] uppercase tracking-widest">Total Net Payable</Text>
-                                            <Text className="text-3xl font-black text-[#1D4171]">₹{totalFare}</Text>
-                                        </View>
-                                        <View className="bg-orange-50 p-3 rounded-2xl border border-orange-100">
-                                            <Ionicons name="wallet" size={24} color="#F07E21" />
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Wallet Warning */}
-                                <View className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex-row items-center gap-3">
-                                    <MaterialCommunityIcons name="shield-lock" size={24} color="#1D4171" />
-                                    <Text className="flex-1 text-[11px] font-bold text-[#1D4171] leading-relaxed">
-                                        Clicking confirm will securely deduct ₹{totalFare} from your B2B wallet balance.
-                                    </Text>
-                                </View>
-
-                                {/* Navigation Buttons */}
-                                <View className="flex-row gap-4 mt-2">
-                                    <TouchableOpacity 
-                                        disabled={submitting}
-                                        onPress={() => setStep(2)}
-                                        className="flex-1 bg-gray-100 py-5 rounded-[2rem] items-center border border-gray-200"
-                                    >
-                                        <Text className="text-gray-600 font-black text-xs uppercase tracking-widest">Back</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        disabled={submitting}
-                                        onPress={handleSubmit}
-                                        className="flex-[2] bg-[#1D4171] py-5 rounded-[2rem] items-center shadow-lg shadow-[#1D4171]/20 flex-row justify-center gap-2"
-                                    >
-                                        {submitting ? (
-                                            <ActivityIndicator color="white" />
+                                        {/* Wallet / Seats Status Warnings */}
+                                        {agentBalance < totalFare ? (
+                                            <View style={{ backgroundColor: t.isDark ? '#3b0f0f' : '#fef2f2', borderColor: t.isDark ? '#7f1d1d' : '#fecaca' }} className="p-4 rounded-2xl border flex-row items-start gap-3">
+                                                <Ionicons name="alert-circle-outline" size={20} color="#ef4444" />
+                                                <Text style={{ color: t.isDark ? '#fca5a5' : '#b91c1c' }} className="flex-1 text-[10px] font-bold leading-relaxed">
+                                                    Insufficient Wallet Balance. Your B2B wallet balance (₹{agentBalance.toLocaleString('en-IN')}) is insufficient for this booking of ₹{totalFare.toLocaleString('en-IN')}. Please top up before checking out.
+                                                </Text>
+                                            </View>
+                                        ) : latestFlight.availableSeats < (adultsCount + childrenCount) ? (
+                                            <View style={{ backgroundColor: t.isDark ? '#3b0f0f' : '#fef2f2', borderColor: t.isDark ? '#7f1d1d' : '#fecaca' }} className="p-4 rounded-2xl border flex-row items-start gap-3">
+                                                <Ionicons name="alert-circle-outline" size={20} color="#ef4444" />
+                                                <Text style={{ color: t.isDark ? '#fca5a5' : '#b91c1c' }} className="flex-1 text-[10px] font-bold leading-relaxed">
+                                                    Insufficient Seats Available. This flight only has {latestFlight.availableSeats} available seats, but you requested booking for {adultsCount + childrenCount} seat-consuming travelers.
+                                                </Text>
+                                            </View>
                                         ) : (
-                                            <>
-                                                <Text className="text-white font-black text-xs uppercase tracking-widest">Confirm & Pay</Text>
-                                                <Ionicons name="checkmark-circle" size={16} color="white" />
-                                            </>
+                                            <View style={{ backgroundColor: t.isDark ? 'rgba(72,160,212,0.1)' : '#eff6ff', borderColor: t.isDark ? '#1e3a8a' : '#bfdbfe' }} className="p-4 rounded-2xl border flex-row items-start gap-3">
+                                                <Ionicons name="shield-checkmark-outline" size={20} color={t.isDark ? '#48A0D4' : '#1D4171'} />
+                                                <Text style={{ color: t.isDark ? '#93c5fd' : '#1D4171' }} className="flex-1 text-[10px] font-bold leading-relaxed">
+                                                    By confirming, the B2B agent balance of ₹{totalFare} will be deducted from your account wallet immediately to lock this departure seat.
+                                                </Text>
+                                            </View>
                                         )}
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+
+                                        {/* Submit / Back buttons */}
+                                        <View className="flex-row gap-4.5 pt-2">
+                                            <TouchableOpacity 
+                                                disabled={submitting}
+                                                onPress={() => setStep(2)}
+                                                style={{ backgroundColor: t.isDark ? '#1e293b' : '#f1f5f9', borderColor: t.cardBorder }}
+                                                className="flex-1 py-4 rounded-2xl items-center border disabled:opacity-50"
+                                            >
+                                                <Text style={{ color: t.text }} className="font-black text-xs uppercase tracking-widest">Back</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                disabled={submitting || agentBalance < totalFare || latestFlight.availableSeats < (adultsCount + childrenCount)}
+                                                onPress={handleSubmit}
+                                                style={{ backgroundColor: (agentBalance < totalFare || latestFlight.availableSeats < (adultsCount + childrenCount)) ? '#94a3b8' : '#1D4171' }}
+                                                className="flex-[2] py-4 rounded-2xl items-center shadow-lg shadow-[#1D4171]/20 flex-row justify-center gap-1.5 disabled:opacity-50"
+                                            >
+                                                {submitting ? (
+                                                    <ActivityIndicator color="white" />
+                                                ) : (
+                                                    <>
+                                                        <Text className="text-white font-black text-xs uppercase tracking-widest">
+                                                            {agentBalance < totalFare ? 'Insufficient Balance' : latestFlight.availableSeats < (adultsCount + childrenCount) ? 'No Seats Left' : 'Confirm & Pay'}
+                                                        </Text>
+                                                        <Ionicons name="checkmark-circle-outline" size={15} color="white" />
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                            </>
                         )}
 
-                        <View style={{ height: 120 }} />
+                        <View style={{ height: 60 }} />
                     </ScrollView>
                 </KeyboardAvoidingView>
 
-                {/* DOB Calendar Modal */}
                 <Modal
-                    visible={activeDobIndex !== null}
+                    visible={activeDateIndex !== null}
                     transparent={true}
                     animationType="fade"
-                    onRequestClose={() => setActiveDobIndex(null)}
+                    onRequestClose={() => setActiveDateIndex(null)}
                 >
-                    <View className="flex-1 justify-center items-center bg-black/50 p-4">
-                        <View className="bg-white rounded-3xl overflow-hidden w-full max-w-sm p-4 shadow-2xl">
+                    <View className="flex-1 justify-center items-center bg-black/60 p-5">
+                        <View style={{ backgroundColor: t.card, borderColor: t.cardBorder }} className="w-full max-w-sm rounded-3xl overflow-hidden p-4.5 shadow-2xl border">
                             <View className="flex-row justify-between items-center mb-4 px-2 pt-2">
-                                <Text className="font-black text-lg text-[#1D4171]">Select Date of Birth</Text>
-                                <TouchableOpacity onPress={() => setActiveDobIndex(null)} className="bg-gray-100 p-2 rounded-full">
-                                    <Ionicons name="close" size={20} color="#1E293B" />
+                                <Text style={{ color: t.text }} className="font-black text-base">
+                                    {activeDateField === 'dob' ? 'Select Date of Birth' : 'Select Expiry Date'}
+                                </Text>
+                                <TouchableOpacity onPress={() => setActiveDateIndex(null)} style={{ backgroundColor: t.isDark ? '#1e293b' : '#f1f5f9' }} className="p-2 rounded-full">
+                                    <Ionicons name="close" size={20} color={t.text} />
                                 </TouchableOpacity>
                             </View>
                             <Calendar
-                                current={'2000-01-01'}
-                                maxDate={new Date().toISOString().split('T')[0]}
+                                current={activeDateField === 'dob' ? '2000-01-01' : undefined}
+                                maxDate={activeDateField === 'dob' ? new Date().toISOString().split('T')[0] : undefined}
+                                minDate={activeDateField === 'passportExpiry' ? new Date().toISOString().split('T')[0] : undefined}
                                 onDayPress={(day) => {
-                                    handleInputChange(activeDobIndex, 'dob', day.dateString);
-                                    setActiveDobIndex(null);
+                                    handleInputChange(activeDateIndex, activeDateField, day.dateString);
+                                    setActiveDateIndex(null);
                                 }}
                                 theme={{
+                                    calendarBackground: t.card,
+                                    dayTextColor: t.text,
+                                    monthTextColor: t.text,
                                     todayTextColor: '#F07E21',
                                     arrowColor: '#1D4171',
                                     selectedDayBackgroundColor: '#1D4171',
                                     selectedDayTextColor: '#ffffff',
+                                    textSectionTitleColor: t.textMuted,
+                                    textDisabledColor: t.isDark ? '#334155' : '#cbd5e1',
                                     textDayFontWeight: 'bold',
                                     textMonthFontWeight: 'bold',
                                     textDayHeaderFontWeight: 'bold'

@@ -486,12 +486,14 @@ const approveOtbAgentAccess = async (req, res, next) => {
 
 const adjustAgentWallet = async (req, res, next) => {
     try {
-        const { agentId, amount, type, remark } = req.body;
+        const { agentId, amount, type, remark, walletType } = req.body;
         const agent = await Agent.findById(agentId);
         if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
 
         const adjustmentAmount = type === 'CREDIT' ? Number(amount) : -Number(amount);
-        agent.walletBalance += adjustmentAmount;
+        const targetWallet = walletType === 'FIXED_DEPARTURE' ? 'fdWalletBalance' : 'walletBalance';
+        
+        agent[targetWallet] += adjustmentAmount;
         await agent.save();
 
         const Transaction = require('../Models/Transaction.model');
@@ -500,14 +502,15 @@ const adjustAgentWallet = async (req, res, next) => {
             amount: Math.abs(adjustmentAmount),
             transactionType: type,
             purpose: 'ADMIN_ADJUSTMENT',
+            walletType: walletType === 'FIXED_DEPARTURE' ? 'FIXED_DEPARTURE' : 'MAIN',
             referenceId: `ADJ-${Date.now()}`,
-            balanceAfterTransaction: agent.walletBalance,
+            balanceAfterTransaction: agent[targetWallet],
             status: 'SUCCESS',
             gross: Math.abs(adjustmentAmount),
             remark: remark || 'Admin Adjustment'
         });
 
-        res.status(200).json({ success: true, message: `Wallet ${type === 'CREDIT' ? 'credited' : 'debited'} successfully`, data: { balance: agent.walletBalance } });
+        res.status(200).json({ success: true, message: `Wallet ${type === 'CREDIT' ? 'credited' : 'debited'} successfully`, data: { balance: agent.walletBalance, fdBalance: agent.fdWalletBalance } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -1,10 +1,24 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resetToAuth } from './navigationService';
+import Constants from 'expo-constants';
 
-// Current Machine IP: 192.168.1.15 (found via ipconfig)
-const API_URL = 'http://192.168.1.15:5000/api';
-export const BASE_URL = 'http://192.168.1.15:5000';
+// Auto-detect dev machine IP from the Expo bundler URL.
+// This means you NEVER need to manually update the IP when your network changes.
+const getDevServerIP = () => {
+    // In Expo dev mode, hostUri = "192.168.x.x:8081" (bundler IP:port)
+    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+    if (hostUri) {
+        return hostUri.split(':')[0]; // extract just the IP
+    }
+    return 'localhost'; // fallback for production / web
+};
+
+const DEV_IP = getDevServerIP();
+const API_URL = `http://${DEV_IP}:5000/api`;
+export const BASE_URL = `http://${DEV_IP}:5000`;
+
+console.log(`📡 API connecting to: ${API_URL}`);
 
 const api = axios.create({
     baseURL: API_URL,
@@ -189,8 +203,11 @@ export const fixedDepartureService = {
         const response = await api.get('/fixed-departures/available-dates', { params: { from, to } });
         return response.data;
     },
-    bookFlight: async (flightId, passengers) => {
-        const response = await api.post('/fixed-departures/book', { flightId, passengers });
+    bookFlight: async (...args) => {
+        const payload = args.length === 1 && typeof args[0] === 'object'
+            ? args[0]
+            : { flightId: args[0], passengers: args[1], isInternational: args[2] };
+        const response = await api.post('/fixed-departures/book', payload);
         return response.data;
     },
     getMyBookings: async () => {
@@ -210,8 +227,19 @@ export const visaService = {
     }
 };
 
+export const insuranceService = {
+    getPackages: async (search = '') => {
+        const response = await api.get('/insurance', { params: { search } });
+        return response.data;
+    },
+    getPackageById: async (id) => {
+        const response = await api.get(`/insurance/${id}`);
+        return response.data;
+    }
+};
+
 export const bookingService = {
-    BASE_URL: 'http://192.168.1.15:5000',
+    BASE_URL: BASE_URL,
     ftdSearchFlights: async (searchParams = {}) => {
         if (!searchParams || typeof searchParams !== 'object') searchParams = {};
         const TRIP_TYPE_MAP = { oneWay: 0, roundTrip: 1, multiCity: 2, '0': 0, '1': 1, '2': 2, 0: 0, 1: 1, 2: 2 };
@@ -548,6 +576,27 @@ export const adminService = {
         const response = await api.delete(`/admin/visas/${id}`);
         return response.data;
     },
+    // --- INSURANCE ---
+    getInsurancePackages: async () => {
+        const response = await api.get('/insurance');
+        return response.data;
+    },
+    createInsurancePackage: async (formData) => {
+        const response = await api.post('/admin/insurance', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    updateInsurancePackage: async (id, formData) => {
+        const response = await api.put(`/admin/insurance/${id}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+    deleteInsurancePackage: async (id) => {
+        const response = await api.delete(`/admin/insurance/${id}`);
+        return response.data;
+    },
     // --- REFUNDS ---
     getRefunds: async (page = 1, limit = 50, status = '') => {
         const response = await api.get('/admin/refunds', { params: { page, limit, status } });
@@ -651,6 +700,18 @@ export const otbService = {
     getPricing: async (isAdmin = false) => {
         const url = isAdmin ? '/otb/admin/pricing' : '/otb/pricing';
         const response = await api.get(url);
+        return response.data;
+    },
+    createPricing: async (data) => {
+        const response = await api.post('/otb/admin/pricing', data);
+        return response.data;
+    },
+    updatePricing: async (id, data) => {
+        const response = await api.put(`/otb/admin/pricing/${id}`, data);
+        return response.data;
+    },
+    deletePricing: async (id) => {
+        const response = await api.delete(`/otb/admin/pricing/${id}`);
         return response.data;
     },
     activateWithWallet: async () => {

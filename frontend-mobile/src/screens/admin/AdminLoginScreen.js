@@ -43,7 +43,7 @@ export default function AdminLoginScreen({ navigation }) {
                         >
                             <View className="absolute top-0 left-0 w-80 h-80 bg-white/10 rounded-full -ml-40 -mt-40" />
                             <View className="absolute bottom-0 right-0 w-96 h-96 bg-black/10 rounded-full -mr-48 -mb-48" />
-                            <View className="w-20 h-20 bg-white/10 rounded-[2rem] items-center justify-center mb-6 border border-white/20 shadow-sm">
+                            <View className="w-20 h-20 bg-white/10 rounded-3xl items-center justify-center mb-6 border border-white/20 shadow-sm">
                                 <Ionicons name="shield-checkmark" size={36} color="#FFF" />
                             </View>
                             <Text className="text-white text-3xl font-black text-center tracking-wide">Admin Portal</Text>
@@ -53,7 +53,7 @@ export default function AdminLoginScreen({ navigation }) {
                         </LinearGradient>
 
                         <View className="px-5 -mt-10">
-                            <View style={{ backgroundColor: t.card, elevation: 12 }} className="p-8 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40">
+                            <View style={{ backgroundColor: t.card, elevation: 12 }} className="p-8 rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40">
                                 <View className="mb-8 border-b border-slate-100 pb-4">
                                     <Text style={{ color: t.text }} className="text-2xl font-black tracking-wide">Admin Sign In</Text>
                                     <Text style={{ color: t.textSecondary }} className="font-bold text-xs mt-1">Use super admin credentials to proceed.</Text>

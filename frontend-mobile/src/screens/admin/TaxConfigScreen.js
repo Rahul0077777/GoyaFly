@@ -148,7 +148,7 @@ export default function TaxConfigScreen({ navigation }) {
                     <ScrollView className="flex-1 px-5 pt-2" showsVerticalScrollIndicator={false}>
                         {taxes.map((tx) => (
                             <View key={tx._id} style={{ backgroundColor: t.card, elevation: 8 }}
-                                className="p-7 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 mb-6 shadow-2xl shadow-slate-300/40">
+                                className="p-7 rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 mb-6 shadow-2xl shadow-slate-300/40">
                                 <View className="flex-row justify-between items-start mb-6 pb-4 border-b border-slate-100">
                                     <View className="flex-1 pr-3">
                                         <Text style={{ color: t.text }} className="text-xl font-black tracking-wide mb-2">{tx.name}</Text>
@@ -178,7 +178,7 @@ export default function TaxConfigScreen({ navigation }) {
                         ))}
 
                         {/* Legal Compliance Banner */}
-                        <View className="bg-amber-50 border-2 border-dashed border-amber-200 p-7 rounded-[2.5rem] mt-2 mb-10 flex-row items-center shadow-inner">
+                        <View className="bg-amber-50 border-2 border-dashed border-amber-200 p-7 rounded-3xl mt-2 mb-10 flex-row items-center shadow-inner">
                             <Text className="text-4xl mr-5">⚖️</Text>
                             <View className="flex-1">
                                 <Text className="text-amber-900 font-black text-base tracking-wide mb-1">Legal Compliance Notice</Text>
@@ -195,7 +195,7 @@ export default function TaxConfigScreen({ navigation }) {
             {/* Modal */}
             <Modal visible={isModalOpen} animationType="slide" transparent>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-black/60 justify-end">
-                    <View style={{ elevation: 24 }} className="bg-white rounded-t-[3.5rem] p-8 pb-12 shadow-2xl border-t border-slate-100">
+                    <View style={{ elevation: 24 }} className="bg-white rounded-t-3xl p-8 pb-12 shadow-2xl border-t border-slate-100">
                         <View className="flex-row justify-between items-center mb-8 pb-4 border-b border-slate-100">
                             <View>
                                 <Text style={{ color: t.text }} className="text-2xl font-black tracking-wide uppercase">

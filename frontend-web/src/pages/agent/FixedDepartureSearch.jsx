@@ -555,7 +555,10 @@ const FixedDepartureSearch = () => {
                                                 <p className="text-[10px] font-bold text-slate-400">&gt; 12 years</p>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <button type="button" onClick={() => setPax({...pax, adults: Math.max(1, pax.adults - 1)})} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[#1D4171] font-black hover:bg-slate-200">-</button>
+                                                <button type="button" onClick={() => {
+                                                    const newAdults = Math.max(1, pax.adults - 1);
+                                                    setPax({...pax, adults: newAdults, infants: Math.min(pax.infants, newAdults)});
+                                                }} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[#1D4171] font-black hover:bg-slate-200">-</button>
                                                 <span className="font-black text-sm w-4 text-center">{pax.adults}</span>
                                                 <button type="button" onClick={() => setPax({...pax, adults: Math.min(9, pax.adults + 1)})} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[#1D4171] font-black hover:bg-slate-200">+</button>
                                             </div>
@@ -769,8 +772,12 @@ const FixedDepartureSearch = () => {
                                 {/* Top Row: Logo/Airline & Route & Baggage */}
                                 <div className="flex justify-between items-start mb-4 pb-3 border-b border-[#1D4171]/10">
                                     <div className="flex items-center gap-3.5">
-                                        <div className="w-12 h-12 bg-gradient-to-br from-[#1D4171] to-[#48A0D4] rounded-2xl flex items-center justify-center text-white text-xl shadow-sm shadow-[#1D4171]/20">
-                                            ✈️
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border border-slate-100 overflow-hidden">
+                                            {flight.airlineLogo ? (
+                                                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}/${flight.airlineLogo}`} alt={flight.airlineName} className="w-full h-full object-contain p-1" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-[#1D4171] to-[#48A0D4] flex items-center justify-center text-white">✈️</div>
+                                            )}
                                         </div>
                                         <div>
                                             <h3 className="text-base sm:text-lg font-black text-[#1D4171] mb-0.5 capitalize">✈ {flight.fromCity} → {flight.toCity}</h3>

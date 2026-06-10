@@ -61,7 +61,7 @@ export default function BookingManagerScreen({ navigation }) {
     const categories = ['All', 'Flights', 'Hotels', 'Buses', 'Trains'];
 
     const renderBookingItem = ({ item }) => (
-        <View style={{ backgroundColor: t.card, elevation: 8 }} className="mx-5 mb-6 p-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40">
+        <View style={{ backgroundColor: t.card, elevation: 8 }} className="mx-5 mb-6 p-6 rounded-3xl border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40">
             <View className="flex-row justify-between items-start mb-4 pb-4 border-b border-slate-100">
                 <View className="flex-row items-center flex-1 pr-2">
                     <View className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center mr-4 border border-slate-100 shadow-sm">

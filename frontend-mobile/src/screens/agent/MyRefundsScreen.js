@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
     View, 
     Text, 
-    StyleSheet, 
     FlatList, 
     TouchableOpacity, 
     ActivityIndicator, 
@@ -11,53 +10,71 @@ import {
     ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { bookingService } from '../../services/api';
-import { useNavigation } from '@react-navigation/native';
+import { useThemeColors } from '../../utils/themeColors';
 
-const MyRefundsScreen = () => {
-    const navigation = useNavigation();
+export default function MyRefundsScreen({ navigation }) {
+    const t = useThemeColors();
     const [refunds, setRefunds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('FLIGHT');
     
+    // Filters
+    const [bookingId, setBookingId] = useState('');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+
     const categories = [
         { id: 'FLIGHT', label: 'Flight', icon: 'airplane' },
         { id: 'BUS', label: 'Bus', icon: 'bus' },
         { id: 'CAB', label: 'Cab', icon: 'car' },
         { id: 'HOTEL', label: 'Hotel', icon: 'business' },
         { id: 'INSURANCE', label: 'Insurance', icon: 'shield-checkmark' },
-        { id: 'VISA', label: 'Visa', icon: 'card' },
+        { id: 'VISA', label: 'Visa', icon: 'document-text' },
     ];
 
-    useEffect(() => {
-        fetchRefunds();
-    }, [activeTab]);
-
-    const fetchRefunds = async () => {
-        setLoading(true);
+    const fetchRefunds = async (isRefresh = false) => {
+        if (!isRefresh) setLoading(true);
         try {
             const res = await bookingService.getAgentHistory({
                 status: 'CANCELLED',
                 serviceType: activeTab,
+                bookingId: bookingId.trim() || undefined,
+                fromDate: fromDate || undefined,
+                toDate: toDate || undefined,
                 limit: 50
             });
             if (res.success) {
                 setRefunds(res.data);
             }
         } catch (err) {
-            console.error('Mobile fetch error', err);
+            console.error('Failed to fetch refunds on mobile', err);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     };
 
+    useEffect(() => {
+        fetchRefunds();
+    }, [activeTab]);
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchRefunds(true);
+    };
+
+    const handleSearchSubmit = () => {
+        fetchRefunds();
+    };
+
     const renderRefundCard = ({ item }) => {
         const isProcessed = item.refundStatus === 'PROCESSED';
         const isPending = item.refundStatus === 'PENDING_AIRLINE';
         const isFailed = item.refundStatus === 'FAILED';
-        const isNA = item.refundStatus === 'NA' || !item.refundStatus;
 
         const getStatusStyles = () => {
             if (isProcessed) return { bg: '#ecfdf5', text: '#059669', label: 'REFUNDED' };
@@ -68,40 +85,71 @@ const MyRefundsScreen = () => {
 
         const status = getStatusStyles();
 
+        const getPaxName = (b) => {
+            const details = b.passengerDetails;
+            if (!details) return 'Customer';
+            if (Array.isArray(details) && details[0]) {
+                const p = details[0];
+                if (p.fName || p.lName) return `${p.title || ''} ${p.fName || ''} ${p.lName || ''}`.trim();
+                return p.passengerName || p.name || 'Customer';
+            }
+            if (typeof details === 'object') return details.name || details.passengerName || 'Customer';
+            return 'Customer';
+        };
+
         return (
-            <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.idBadge, { backgroundColor: '#1D4171' }]}>
-                        <Text style={styles.idText}>{item.providerReference || 'REF'}</Text>
+            <View 
+                style={{ backgroundColor: t.card, borderColor: t.cardBorder, borderLeftColor: '#1D4171', elevation: 4 }}
+                className="mb-5 rounded-[2rem] border border-slate-100 border-b-4 border-l-8 shadow-sm overflow-hidden"
+            >
+                {/* Header Row */}
+                <View className="px-5 py-3.5 border-b border-slate-100 flex-row justify-between items-center bg-slate-50/50">
+                    <View style={{ backgroundColor: '#1D4171' }} className="px-2.5 py-1 rounded-lg">
+                        <Text className="text-white text-[9px] font-black uppercase tracking-wider font-mono">
+                            {(item.providerReference || item._id || '').slice(-8).toUpperCase()}
+                        </Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: status.bg, borderColor: status.text + '20' }]}>
-                        <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
+                    <View style={{ backgroundColor: status.bg, borderColor: status.text + '20' }} className="px-3 py-1 rounded-xl border">
+                        <Text style={{ color: status.text }} className="text-[9px] font-black uppercase tracking-wider">
+                            {status.label}
+                        </Text>
                     </View>
                 </View>
 
-                <View style={styles.cardBody}>
-                    <View style={styles.row}>
-                        <View style={styles.col}>
-                            <Text style={styles.label}>PASSENGER</Text>
-                            <Text style={styles.val}>{item.passengerDetails?.name || item.passengerDetails?.[0]?.FirstName || 'Customer'}</Text>
+                {/* Body Details */}
+                <View className="p-5">
+                    <View className="flex-row justify-between mb-3">
+                        <View className="flex-1 mr-2">
+                            <Text style={{ color: t.textMuted }} className="text-[8px] font-black uppercase tracking-widest mb-0.5">Passenger</Text>
+                            <Text style={{ color: t.text }} className="text-xs font-black uppercase" numberOfLines={1}>
+                                {getPaxName(item)}
+                            </Text>
                         </View>
-                        <View style={styles.colRight}>
-                            <Text style={styles.labelRight}>PNR</Text>
-                            <Text style={styles.pnrVal}>{item.pnr || 'N/A'}</Text>
+                        <View className="items-end">
+                            <Text style={{ color: t.textMuted }} className="text-[8px] font-black uppercase tracking-widest mb-0.5">PNR</Text>
+                            <Text style={{ color: '#1D4171' }} className="font-black text-xs uppercase tracking-wider font-mono bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                {item.pnr || item.providerReference || 'N/A'}
+                            </Text>
                         </View>
                     </View>
 
-                    <View style={styles.divider} />
+                    <View className="h-px bg-slate-100 my-3" />
 
-                    <View style={styles.row}>
-                        <View style={styles.col}>
-                            <Text style={styles.label}>CANCELLED ON</Text>
-                            <Text style={styles.subVal}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                    <View className="flex-row justify-between items-end">
+                        <View>
+                            <Text style={{ color: t.textMuted }} className="text-[8px] font-black uppercase tracking-widest mb-0.5">Cancelled Date</Text>
+                            <Text style={{ color: t.text }} className="text-xs font-bold">
+                                {new Date(item.createdAt).toLocaleDateString()}
+                            </Text>
                         </View>
-                        <View style={styles.colRight}>
-                            <Text style={styles.labelRight}>REFUND AMOUNT</Text>
-                            <Text style={styles.amount}>₹{(item.refundAmount || 0).toLocaleString()}</Text>
-                            <Text style={{ fontSize: 8, color: '#94a3b8', textDecorationLine: 'line-through' }}>₹{item.totalCost?.toLocaleString()}</Text>
+                        <View className="items-end">
+                            <Text style={{ color: t.textMuted }} className="text-[8px] font-black uppercase tracking-widest mb-0.5">Refunded Amount</Text>
+                            <Text style={{ color: '#1D4171' }} className="text-base font-black">
+                                ₹{(item.refundAmount || 0).toLocaleString()}
+                            </Text>
+                            <Text style={{ color: t.textMuted }} className="text-[9px] font-bold line-through">
+                                ₹{(item.totalCost || 0).toLocaleString()}
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -110,224 +158,99 @@ const MyRefundsScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Category Tabs */}
-            <View style={styles.tabsContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-                    {categories.map((cat) => (
+        <View style={{ flex: 1, backgroundColor: t.bg }}>
+            <StatusBar style="light" />
+            <SafeAreaView className="flex-1" edges={['top']}>
+                {/* Brand Header Banner */}
+                <View style={{ backgroundColor: '#1D4171' }} className="pt-6 pb-12 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+                    <View className="flex-row items-center justify-between mb-6">
                         <TouchableOpacity 
-                            key={cat.id} 
-                            onPress={() => setActiveTab(cat.id)}
-                            style={[
-                                styles.tab, 
-                                activeTab === cat.id && styles.activeTab
-                            ]}
+                            onPress={() => navigation.goBack()} 
+                            className="w-11 h-11 bg-white/10 rounded-2xl items-center justify-center border border-white/20 border-b-4 border-b-white/30 active:scale-95"
                         >
-                            <Ionicons 
-                                name={cat.icon} 
-                                size={18} 
-                                color={activeTab === cat.id ? '#fff' : '#94a3b8'} 
-                            />
-                            <Text style={[
-                                styles.tabLabel, 
-                                activeTab === cat.id && styles.activeTabLabel
-                            ]}>
-                                {cat.label}
-                            </Text>
+                            <Ionicons name="chevron-back" size={20} color="#fff" />
                         </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {loading && !refreshing ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#F07E21" />
-                    <Text style={styles.loadingText}>Loading Refunds...</Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={refunds}
-                    renderItem={renderRefundCard}
-                    keyExtractor={item => item._id}
-                    contentContainerStyle={styles.list}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRefunds(); }} />
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="folder-open-outline" size={60} color="#e2e8f0" />
-                            <Text style={styles.emptyText}>No refunds found in {activeTab}</Text>
+                        <Text className="text-white/40 text-[9px] font-black uppercase tracking-widest">Secure Terminal</Text>
+                        <View className="w-11 h-11" />
+                    </View>
+                    <Text className="text-white text-3xl font-black mb-1">My Refunds</Text>
+                    <Text className="text-white/50 text-[9px] font-black uppercase tracking-widest">Status of Cancellation & Refunds</Text>
+                    
+                    {/* Search Field */}
+                    <View className="mt-6 flex-row gap-3">
+                        <View className="flex-1 bg-white/10 rounded-2xl flex-row items-center px-4 h-12 border border-white/20">
+                            <Ionicons name="search" size={16} color="rgba(255,255,255,0.6)" />
+                            <TextInput 
+                                value={bookingId}
+                                onChangeText={setBookingId}
+                                placeholder="Search Booking ID or PNR..."
+                                placeholderTextColor="rgba(255,255,255,0.4)"
+                                onSubmitEditing={handleSearchSubmit}
+                                className="flex-1 ml-2 text-white font-bold text-xs"
+                            />
                         </View>
-                    }
-                />
-            )}
+                        <TouchableOpacity 
+                            onPress={handleSearchSubmit}
+                            style={{ backgroundColor: '#F07E21' }}
+                            className="px-5 py-3 rounded-2xl active:scale-95 shadow-sm items-center justify-center"
+                        >
+                            <Text className="text-white font-black text-xs uppercase">SUBMIT</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Horizontal Category Tab Bar */}
+                <View className="-mt-6 px-4 mb-4">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View className="flex-row gap-2 pb-2">
+                            {categories.map((cat) => (
+                                <TouchableOpacity 
+                                    key={cat.id} 
+                                    onPress={() => setActiveTab(cat.id)}
+                                    style={{ 
+                                        backgroundColor: activeTab === cat.id ? '#fff' : '#1e293b',
+                                        borderColor: activeTab === cat.id ? '#cbd5e1' : '#334155'
+                                    }}
+                                    className={`flex-row items-center gap-2.5 px-6 py-3.5 rounded-2xl shadow-sm border border-b-4 active:scale-95 ${activeTab === cat.id ? 'border-b-slate-300' : 'border-b-slate-800'}`}
+                                >
+                                    <Ionicons 
+                                        name={cat.icon} 
+                                        size={14} 
+                                        color={activeTab === cat.id ? '#F07E21' : '#94a3b8'} 
+                                    />
+                                    <Text className={`text-[10px] font-black uppercase tracking-wider ${activeTab === cat.id ? 'text-[#1D4171]' : 'text-slate-300'}`}>
+                                        {cat.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </ScrollView>
+                </View>
+
+                {/* Refunds List container */}
+                {loading && !refreshing ? (
+                    <View className="flex-1 justify-center items-center">
+                        <ActivityIndicator size="large" color="#F07E21" />
+                        <Text style={{ color: t.textMuted }} className="mt-4 font-black uppercase text-[9px] tracking-widest">Loading Refund Claims...</Text>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={refunds}
+                        renderItem={renderRefundCard}
+                        keyExtractor={item => item._id}
+                        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 60 }}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#F07E21']} tintColor="#F07E21" />
+                        }
+                        ListEmptyComponent={
+                            <View className="py-20 items-center opacity-30">
+                                <Ionicons name="folder-open-outline" size={60} color="#cbd5e1" />
+                                <Text style={{ color: t.text }} className="mt-4 font-black uppercase text-xs tracking-widest">No refunds found in {activeTab}</Text>
+                            </View>
+                        }
+                    />
+                )}
+            </SafeAreaView>
         </View>
     );
-};
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8fafc',
-    },
-    tabsContainer: {
-        backgroundColor: '#1D4171',
-        paddingVertical: 12,
-    },
-    tabsScroll: {
-        paddingHorizontal: 16,
-    },
-    tab: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginRight: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    activeTab: {
-        backgroundColor: '#F07E21',
-        borderColor: '#F07E21',
-        borderBottomWidth: 4,
-        borderBottomColor: '#c76014',
-    },
-    tabLabel: {
-        color: '#94a3b8',
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginLeft: 6,
-    },
-    activeTabLabel: {
-        color: '#fff',
-    },
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 12,
-        color: '#94a3b8',
-        fontWeight: 'bold',
-    },
-    list: {
-        padding: 16,
-    },
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-        borderBottomWidth: 8,
-        borderBottomColor: '#e2e8f0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 8,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    idBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    idText: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: '900',
-    },
-    statusBadge: {
-        backgroundColor: '#ecfdf5',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#d1fae5',
-    },
-    statusText: {
-        color: '#059669',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
-    cardBody: {
-        padding: 16,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    col: {
-        flex: 1,
-    },
-    colRight: {
-        alignItems: 'flex-end',
-    },
-    label: {
-        fontSize: 9,
-        color: '#94a3b8',
-        fontWeight: '900',
-        marginBottom: 4,
-    },
-    labelRight: {
-        fontSize: 9,
-        color: '#94a3b8',
-        fontWeight: '900',
-        marginBottom: 4,
-        textAlign: 'right',
-    },
-    val: {
-        fontSize: 13,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        textTransform: 'uppercase',
-    },
-    subVal: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#64748b',
-    },
-    pnrVal: {
-        fontSize: 12,
-        fontWeight: '900',
-        color: '#1D4171',
-        backgroundColor: '#eff6ff',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    amount: {
-        fontSize: 16,
-        fontWeight: '900',
-        color: '#1D4171',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#f1f5f9',
-        marginVertical: 12,
-    },
-    emptyContainer: {
-        paddingVertical: 100,
-        alignItems: 'center',
-    },
-    emptyText: {
-        marginTop: 16,
-        color: '#94a3b8',
-        fontWeight: 'bold',
-        fontSize: 14,
-    }
-});
-
-export default MyRefundsScreen;
+}

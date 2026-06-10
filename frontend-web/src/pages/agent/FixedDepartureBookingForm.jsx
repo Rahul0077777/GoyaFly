@@ -88,6 +88,10 @@ const FixedDepartureBookingForm = () => {
     
     const [submitting, setSubmitting] = useState(false);
 
+    // Fetch FD balance from local storage
+    const agentInfo = JSON.parse(localStorage.getItem('agentInfo') || '{}');
+    const fdBalance = agentInfo.fdWalletBalance || 0;
+
     if (!flight) {
         navigate('/agent/fixed-departure-search');
         return null;
@@ -640,11 +644,13 @@ const FixedDepartureBookingForm = () => {
                                     </div>
 
                                     {/* Wallet Warning / Info */}
-                                    <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-200 mb-6 flex items-start gap-2.5">
-                                        <FaShieldAlt className="text-[#1D4171] text-lg shrink-0 mt-0.5" />
-                                        <p className="text-[11px] font-bold text-[#1D4171] leading-relaxed">
-                                            By clicking confirm, ₹{totalFare} will be securely held/deducted from your B2B wallet balance to process this fixed departure booking.
-                                        </p>
+                                    <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-200 mb-6 flex flex-col gap-3">
+                                        <div className="flex items-start gap-2.5">
+                                            <FaShieldAlt className="text-[#1D4171] text-lg shrink-0 mt-0.5" />
+                                            <p className="text-[11px] font-bold text-[#1D4171] leading-relaxed">
+                                                By clicking confirm, ₹{totalFare} will be securely held/deducted from your <span className="font-black text-[#F07E21]">Fixed Departure Wallet</span> balance.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <button 

@@ -22,11 +22,9 @@ export default function TicketConversationScreen({ navigation, route }) {
 
     const fetchTicketDetails = async () => {
         try {
-            // Re-using getTickets and filtering for simplicity, 
-            // but ideally we'd have getTicketById
             const res = await agentService.getTickets();
             if (res.success) {
-                const found = res.data.find(tk => tk._id === ticketId);
+                const found = res.data.find(tk => (tk._id || tk.id) === ticketId);
                 setTicket(found);
             }
         } catch (e) {
@@ -44,11 +42,13 @@ export default function TicketConversationScreen({ navigation, route }) {
         if (!message.trim()) return;
         setSending(true);
         try {
-            const res = await agentService.addTicketMessage(ticketId, message);
+            const res = await agentService.addTicketMessage(ticketId, message.trim());
             if (res.success) {
                 setTicket(res.data);
                 setMessage('');
                 setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: res.message || 'Failed to send message' });
             }
         } catch (e) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to send message' });
@@ -58,22 +58,45 @@ export default function TicketConversationScreen({ navigation, route }) {
     };
 
     if (loading) return <GoyaflyLoader />;
-    if (!ticket) return null;
+    if (!ticket) {
+        return (
+            <View style={{ flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: t.text }} className="font-bold">Ticket not found.</Text>
+                <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-[#1D4171] px-5 py-2.5 rounded-xl">
+                    <Text className="text-white font-bold">Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const status = (ticket.status || 'OPEN').toUpperCase();
+    const isResolved = status === 'RESOLVED' || status === 'CLOSED';
 
     return (
         <View style={{ flex: 1, backgroundColor: t.bg }}>
             <StatusBar style={t.statusBar} />
             <SafeAreaView className="flex-1" edges={['top']}>
-                {/* Header */}
-                <View className="px-6 py-4 flex-row items-center border-b border-gray-100 bg-white shadow-sm">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="w-11 h-11 bg-white rounded-2xl items-center justify-center border border-slate-100 border-b-4 border-slate-200 shadow-sm mr-4 active:scale-95">
+                {/* Dynamic Header */}
+                <View 
+                    style={{ backgroundColor: t.card, borderBottomColor: t.cardBorder }} 
+                    className="px-6 py-4 flex-row items-center border-b shadow-sm"
+                >
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={{ backgroundColor: t.card, borderColor: t.cardBorder }}
+                        className="w-11 h-11 rounded-2xl items-center justify-center border border-b-4 shadow-sm mr-4 active:scale-95"
+                    >
                         <Ionicons name="arrow-back" size={20} color={t.text} />
                     </TouchableOpacity>
                     <View className="flex-1">
-                        <Text style={{ color: t.text }} className="text-lg font-black" numberOfLines={1}>{subject}</Text>
-                        <View className="flex-row items-center">
-                            <View className={`w-2 h-2 rounded-full mr-2 ${ticket.status === 'RESOLVED' ? 'bg-green-500' : 'bg-[#F07E21]'}`} />
-                            <Text className="text-[10px] font-black text-gray-400 uppercase">{ticket.status}</Text>
+                        <Text style={{ color: t.text }} className="text-base font-black" numberOfLines={1}>
+                            {subject}
+                        </Text>
+                        <View className="flex-row items-center mt-0.5">
+                            <View className={`w-2 h-2 rounded-full mr-2 ${isResolved ? 'bg-green-500' : 'bg-orange-500'}`} />
+                            <Text style={{ color: t.textMuted }} className="text-[9px] font-black uppercase tracking-wider">
+                                {status}
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -92,6 +115,11 @@ export default function TicketConversationScreen({ navigation, route }) {
                     >
                         {ticket.messages.map((msg, idx) => {
                             const isMe = msg.senderModel === 'Agent';
+                            const bubbleBg = isMe 
+                                ? '#1D4171' 
+                                : (t.isDark ? '#334155' : '#F1F5F9');
+                            const bubbleText = isMe ? '#ffffff' : t.text;
+                            
                             return (
                                 <View 
                                     key={idx} 
@@ -99,22 +127,22 @@ export default function TicketConversationScreen({ navigation, route }) {
                                 >
                                     <View 
                                         style={{ 
-                                            backgroundColor: isMe ? '#1D4171' : t.card,
-                                            borderBottomRightRadius: isMe ? 4 : 24,
-                                            borderBottomLeftRadius: isMe ? 24 : 4,
-                                            elevation: 4
+                                            backgroundColor: bubbleBg,
+                                            borderBottomRightRadius: isMe ? 4 : 20,
+                                            borderBottomLeftRadius: isMe ? 20 : 4,
+                                            elevation: 1
                                         }}
-                                        className="p-5 rounded-[1.5rem] shadow-md border border-slate-100 border-b-[6px] border-slate-200"
+                                        className="p-4.5 rounded-[1.5rem] shadow-sm"
                                     >
                                         <Text 
-                                            style={{ color: isMe ? '#fff' : t.text }} 
-                                            className="text-[13px] font-medium leading-5"
+                                            style={{ color: bubbleText }} 
+                                            className="text-[13px] font-semibold leading-5"
                                         >
                                             {msg.message}
                                         </Text>
                                     </View>
-                                    <Text className="text-[9px] text-gray-400 font-bold mt-2 uppercase">
-                                        {isMe ? 'You' : 'ZayaFly Support'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <Text style={{ color: t.textMuted }} className="text-[8px] font-bold mt-2 uppercase tracking-wide">
+                                        {isMe ? 'You' : 'GoyaFly Support'} • {new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </Text>
                                 </View>
                             );
@@ -122,23 +150,39 @@ export default function TicketConversationScreen({ navigation, route }) {
                         <View className="h-10" />
                     </ScrollView>
 
-                    {/* Input Area */}
-                    <View className="p-6 bg-white border-t border-gray-100 shadow-2xl">
-                        <View className="flex-row items-center bg-slate-50 rounded-[2rem] px-6 py-2 border border-slate-100 shadow-inner">
+                    {/* Input Reply Area */}
+                    <View 
+                        style={{ backgroundColor: t.card, borderTopColor: t.cardBorder }} 
+                        className="p-5 border-t shadow-lg"
+                    >
+                        <View 
+                            style={{ backgroundColor: t.isDark ? '#1e293b' : '#F8FAFC', borderColor: t.cardBorder }} 
+                            className="flex-row items-center rounded-[2rem] px-5 py-1.5 border"
+                        >
                             <TextInput
-                                placeholder="Type your reply..."
+                                placeholder="Type your reply here..."
                                 value={message}
                                 onChangeText={setMessage}
                                 multiline
                                 maxHeight={100}
-                                className="flex-1 text-sm font-bold text-gray-800 py-3"
+                                style={{ color: t.text }}
+                                className="flex-1 text-sm font-semibold py-2.5"
+                                placeholderTextColor="#A0AEC0"
                             />
                             <TouchableOpacity 
                                 onPress={handleSend}
                                 disabled={sending || !message.trim()}
-                                className={`ml-4 w-11 h-11 rounded-2xl items-center justify-center active:scale-95 border ${sending || !message.trim() ? 'bg-slate-200 border-slate-300 border-b-4' : 'bg-[#F07E21] border-[#F07E21] border-b-4 border-[#c76014] shadow-lg shadow-orange-500/30'}`}
+                                style={{ 
+                                    backgroundColor: sending || !message.trim() ? (t.isDark ? '#334155' : '#E2E8F0') : '#F07E21',
+                                    borderColor: sending || !message.trim() ? (t.isDark ? '#334155' : '#E2E8F0') : '#F07E21',
+                                }}
+                                className="ml-3 w-10 h-10 rounded-2xl items-center justify-center border border-b-4 border-b-[#c76014] active:scale-95"
                             >
-                                {sending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
+                                {sending ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Ionicons name="send" size={16} color={sending || !message.trim() ? '#A0AEC0' : '#fff'} />
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

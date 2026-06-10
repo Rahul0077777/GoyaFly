@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView, Alert, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { adminService } from '../../services/api';
+import { adminService, BASE_URL } from '../../services/api';
 import { StatusBar } from 'expo-status-bar';
 import { useThemeColors } from '../../utils/themeColors';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,11 @@ export default function AgentManagerScreen({ navigation }) {
     const [adjType, setAdjType] = useState('CREDIT');
     const [adjRemark, setAdjRemark] = useState('');
     const [adjLoading, setAdjLoading] = useState(false);
+
+    // KYC Review State
+    const [showKycModal, setShowKycModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [kycLoading, setKycLoading] = useState(false);
 
     const fetchAgents = useCallback(async (pageNum = 1, isRefresh = false) => {
         try {
@@ -68,19 +73,34 @@ export default function AgentManagerScreen({ navigation }) {
         if (!loadingMore && hasMore) { setLoadingMore(true); const np = page + 1; setPage(np); fetchAgents(np, false); }
     };
 
-    const handleKycApprove = async (agentId) => {
-        Alert.alert('Approve KYC?', 'Grant this agent full access?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Approve', onPress: async () => {
-                    try {
-                        const res = await adminService.updateKyc(agentId);
-                        if (res.success) { Toast.show({ type: 'success', text1: 'Success', text2: 'Agent KYC approved!' }); handleRefresh(); }
-                        else Toast.show({ type: 'error', text1: 'Error', text2: res.message || 'Failed to approve agent.' });
-                    } catch { Toast.show({ type: 'error', text1: 'Error', text2: 'KYC approval failed.' }); }
+    const handleKycDecision = async (status) => {
+        if (status === 'REJECTED' && !rejectReason) {
+            return Toast.show({ type: 'error', text1: 'Error', text2: 'Please provide a reason for rejection.' });
+        }
+        Alert.alert(
+            status === 'APPROVED' ? 'Approve Agent?' : 'Reject Agent?',
+            `Are you sure you want to ${status.toLowerCase()} this agent?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Confirm', onPress: async () => {
+                        setKycLoading(true);
+                        try {
+                            const res = await adminService.updateKyc(selectedAgent._id, { status, reason: rejectReason });
+                            if (res.success) {
+                                Toast.show({ type: 'success', text1: 'Success', text2: res.message || `Agent KYC ${status.toLowerCase()}!` });
+                                setShowKycModal(false);
+                                setRejectReason('');
+                                handleRefresh();
+                            } else {
+                                Toast.show({ type: 'error', text1: 'Error', text2: res.message || 'Failed to update agent KYC.' });
+                            }
+                        } catch { Toast.show({ type: 'error', text1: 'Error', text2: 'KYC update failed.' }); }
+                        finally { setKycLoading(false); }
+                    }
                 }
-            }
-        ]);
+            ]
+        );
     };
     const handleToggleBlock = async (agent) => {
         const action = agent.isBlocked ? 'unblock' : 'block';
@@ -103,59 +123,75 @@ export default function AgentManagerScreen({ navigation }) {
 
     const renderAgentItem = ({ item }) => (
         <View style={{ backgroundColor: t.card, elevation: 8 }}
-            className="mx-5 mb-6 rounded-[2.5rem] border border-slate-100 border-b-[8px] border-slate-200 shadow-2xl shadow-slate-300/40 overflow-hidden">
-            {/* Top row */}
-            <View className="p-6 flex-row items-center border-b border-slate-100">
-                <View className="w-14 h-14 bg-[#1D4171] rounded-2xl items-center justify-center mr-4 border border-blue-900 shadow-sm">
-                    <Text className="text-white font-black text-2xl tracking-wider">{item.agentName?.charAt(0) || 'A'}</Text>
+            className="mx-4 mb-6 rounded-3xl border border-slate-100 border-b-[6px] border-slate-200 shadow-xl shadow-slate-300/40 overflow-hidden">
+            
+            {/* Top row: Identity */}
+            <View className="p-5 flex-row items-center border-b border-slate-100">
+                <View className="w-16 h-16 bg-slate-900 rounded-2xl items-center justify-center mr-4 border border-slate-800 shadow-sm">
+                    <Text className="text-white font-black text-3xl tracking-wider">{item.agentName?.charAt(0) || 'A'}</Text>
+                    {item.isBlocked && (
+                        <View className="absolute -top-2 -right-2 bg-rose-500 w-6 h-6 rounded-full items-center justify-center border-2 border-white">
+                            <Ionicons name="lock-closed" size={12} color="#fff" />
+                        </View>
+                    )}
                 </View>
-                <View className="flex-1 pr-2">
-                    <View className="flex-row items-center gap-2 mb-1">
+                <View className="flex-1">
+                    <View className="flex-row items-center flex-wrap gap-2 mb-1.5">
                         <Text style={{ color: t.text }} className="font-black text-lg tracking-wide" numberOfLines={1}>{item.agentName}</Text>
-                        <View className="bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800 shadow-sm">
-                            <Text className="text-white text-[9px] font-black tracking-widest">{item.agentCode || 'PENDING'}</Text>
+                        <View className="bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                            <Text className="text-slate-600 text-[9px] font-black tracking-widest">{item.agentCode || 'PENDING'}</Text>
                         </View>
                     </View>
-                    <Text style={{ color: t.textMuted }} className="text-[10px] font-bold uppercase tracking-wider">{item.agencyName} • {item.emailAddress}</Text>
-                </View>
-                <View className="items-end">
-                    <Text style={{ color: t.text }} className="font-black text-xl tracking-tight">₹{item.walletBalance?.toLocaleString() ?? '0'}</Text>
-                    <Text style={{ color: t.textMuted }} className="text-[10px] font-black uppercase tracking-widest mt-0.5">Wallet</Text>
+                    <Text style={{ color: t.textMuted }} className="text-[11px] font-bold uppercase tracking-wider mb-0.5" numberOfLines={1}>{item.agencyName}</Text>
+                    <Text style={{ color: t.textMuted }} className="text-[10px] font-semibold" numberOfLines={1}>{item.emailAddress}</Text>
                 </View>
             </View>
 
-            {/* Bottom action row */}
-            <View style={{ backgroundColor: t.isDark ? '#0f172a' : '#f8fafc' }}
-                className="px-6 py-4 flex-row justify-between items-center">
-                <View className="flex-row items-center bg-white px-3.5 py-1.5 rounded-xl border border-slate-100 shadow-sm">
-                    <View style={{ backgroundColor: item.isKycVerified ? '#10b981' : '#f59e0b' }} className="w-2 h-2 rounded-full mr-2" />
-                    <Text className={`text-[10px] font-black uppercase tracking-widest ${item.isKycVerified ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {item.isKycVerified ? 'KYC Verified' : 'KYC Pending'}
+            {/* Middle row: Stats & Badges */}
+            <View className="px-5 py-4 flex-row items-center justify-between bg-slate-50 border-b border-slate-100">
+                <View>
+                    <Text style={{ color: t.textMuted }} className="text-[9px] font-black uppercase tracking-widest mb-1">Wallet Balance</Text>
+                    <Text style={{ color: t.text }} className="font-black text-xl tracking-tight">₹{item.walletBalance?.toLocaleString() ?? '0'}</Text>
+                </View>
+                <View className="items-end gap-1.5">
+                    <View className={`px-3 py-1.5 rounded-xl border flex-row items-center shadow-sm ${item.isKycVerified ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                        <Ionicons name={item.isKycVerified ? "checkmark-circle" : "time"} size={12} color={item.isKycVerified ? "#10b981" : "#f59e0b"} className="mr-1.5" />
+                        <Text className={`text-[9px] font-black uppercase tracking-widest ${item.isKycVerified ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {item.isKycVerified ? 'KYC Verified' : 'KYC Pending'}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Bottom action grid */}
+            <View className="px-3 py-3 flex-row flex-wrap justify-center bg-white gap-2">
+                {!item.isKycVerified && (
+                    <TouchableOpacity onPress={() => { setSelectedAgent(item); setShowKycModal(true); setRejectReason(''); }}
+                        className="flex-1 min-w-[45%] bg-emerald-600 p-3 rounded-xl border-b-4 border-emerald-800 active:scale-95 shadow-sm flex-row items-center justify-center gap-2">
+                        <Ionicons name="document-text" size={16} color="#fff" />
+                        <Text className="text-white font-black text-[10px] uppercase tracking-wider">Review KYC</Text>
+                    </TouchableOpacity>
+                )}
+                
+                <TouchableOpacity onPress={() => { setSelectedAgent(item); setShowWalletModal(true); }}
+                    className="flex-1 min-w-[45%] bg-purple-600 p-3 rounded-xl border-b-4 border-purple-800 active:scale-95 shadow-sm flex-row items-center justify-center gap-2">
+                    <Ionicons name="wallet" size={16} color="#fff" />
+                    <Text className="text-white font-black text-[10px] uppercase tracking-wider">Adjust Wallet</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => navigation.navigate('AgentEditor', { agent: item })}
+                    className="flex-1 min-w-[45%] bg-slate-100 p-3 rounded-xl border border-slate-200 border-b-4 border-b-slate-300 active:scale-95 shadow-sm flex-row items-center justify-center gap-2">
+                    <Ionicons name="settings" size={16} color="#475569" />
+                    <Text className="text-slate-700 font-black text-[10px] uppercase tracking-wider">Edit Partner</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => handleToggleBlock(item)}
+                    className={`flex-1 min-w-[45%] p-3 rounded-xl border border-b-4 active:scale-95 shadow-sm flex-row items-center justify-center gap-2 ${item.isBlocked ? 'bg-emerald-50 border-emerald-200 border-b-emerald-300' : 'bg-rose-50 border-rose-200 border-b-rose-300'}`}>
+                    <Ionicons name={item.isBlocked ? 'lock-open' : 'lock-closed'} size={16} color={item.isBlocked ? '#10b981' : '#ef4444'} />
+                    <Text className={`font-black text-[10px] uppercase tracking-wider ${item.isBlocked ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {item.isBlocked ? 'Unblock' : 'Block'}
                     </Text>
-                </View>
-                <View className="flex-row items-center gap-2.5">
-                    {!item.isKycVerified
-                        ? <TouchableOpacity onPress={() => handleKycApprove(item._id)}
-                            className="bg-emerald-600 px-4 py-2.5 rounded-xl border-b-4 border-emerald-800 active:scale-95 shadow-sm">
-                            <Text className="text-white font-black text-[10px] uppercase tracking-wider">Approve KYC</Text>
-                        </TouchableOpacity>
-                        : <View className="bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200 shadow-sm">
-                            <Text className="text-emerald-800 font-black text-[10px] uppercase tracking-wider">✓ Approved</Text>
-                        </View>
-                    }
-                    <TouchableOpacity onPress={() => { setSelectedAgent(item); setShowWalletModal(true); }}
-                        className="bg-purple-600 px-4 py-2.5 rounded-xl border-b-4 border-purple-800 active:scale-95 shadow-sm">
-                        <Text className="text-white font-black text-[10px] uppercase tracking-wider">Adjust Wallet</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('AgentEditor', { agent: item })}
-                        className="bg-white p-2.5 rounded-xl border border-slate-100 border-b-4 border-slate-200 active:scale-95 shadow-sm items-center justify-center">
-                        <Ionicons name="settings" size={18} color="#64748b" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleToggleBlock(item)}
-                        className={`p-2.5 rounded-xl border border-b-4 active:scale-95 shadow-sm items-center justify-center ${item.isBlocked ? 'bg-emerald-50 border-emerald-200 border-b-emerald-300' : 'bg-rose-50 border-rose-200 border-b-rose-300'}`}>
-                        <Ionicons name={item.isBlocked ? 'lock-open' : 'lock-closed'} size={18} color={item.isBlocked ? '#10b981' : '#ef4444'} />
-                    </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -210,7 +246,7 @@ export default function AgentManagerScreen({ navigation }) {
                 {/* Wallet Adjustment Modal */}
                 <Modal visible={showWalletModal} transparent animationType="slide">
                     <View className="flex-1 bg-black/60 justify-end">
-                        <View className="bg-white rounded-t-[3rem] p-8 pb-12 border-t border-slate-100 shadow-2xl" style={{ elevation: 24 }}>
+                        <View className="bg-white rounded-t-3xl p-8 pb-12 border-t border-slate-100 shadow-2xl" style={{ elevation: 24 }}>
                              <View className="flex-row justify-between items-center mb-8 border-b border-slate-100 pb-4">
                                 <View>
                                     <Text className="text-2xl font-black text-[#1D4171] tracking-wide">Wallet Control</Text>
@@ -254,6 +290,82 @@ export default function AgentManagerScreen({ navigation }) {
                              >
                                 {adjLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-black uppercase text-sm tracking-widest">{adjType} WALLET NOW</Text>}
                              </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* KYC Review Modal */}
+                <Modal visible={showKycModal} transparent animationType="slide">
+                    <View className="flex-1 bg-black/80 justify-center items-center px-4">
+                        <View className="bg-white rounded-3xl w-full max-h-[90%] overflow-hidden">
+                            <View className="p-6 border-b border-slate-100 flex-row justify-between items-center bg-slate-50">
+                                <View className="flex-1">
+                                    <Text className="text-xl font-black text-slate-900 tracking-wide uppercase italic">Review Documents</Text>
+                                    <Text className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">{selectedAgent?.agentName}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setShowKycModal(false)} className="w-10 h-10 bg-white rounded-xl items-center justify-center border border-slate-100 shadow-sm ml-2">
+                                    <Ionicons name="close" size={20} color="#64748b" />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView className="p-6 bg-slate-50 flex-1">
+                                <View className="mb-6 space-y-3">
+                                    <Text className="text-[10px] font-black text-slate-500 uppercase tracking-widest">1. Aadhar Front</Text>
+                                    <View className="w-full aspect-video bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                        {selectedAgent?.kycDocuments?.aadharFront ? (
+                                            <Image source={{ uri: `${BASE_URL}${selectedAgent.kycDocuments.aadharFront}` }} className="w-full h-full" resizeMode="contain" />
+                                        ) : <View className="flex-1 items-center justify-center"><Text className="text-slate-400 font-bold">No Document</Text></View>}
+                                    </View>
+                                </View>
+                                <View className="mb-6 space-y-3">
+                                    <Text className="text-[10px] font-black text-slate-500 uppercase tracking-widest">2. Aadhar Back</Text>
+                                    <View className="w-full aspect-video bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                        {selectedAgent?.kycDocuments?.aadharBack ? (
+                                            <Image source={{ uri: `${BASE_URL}${selectedAgent.kycDocuments.aadharBack}` }} className="w-full h-full" resizeMode="contain" />
+                                        ) : <View className="flex-1 items-center justify-center"><Text className="text-slate-400 font-bold">No Document</Text></View>}
+                                    </View>
+                                </View>
+                                <View className="mb-6 space-y-3">
+                                    <Text className="text-[10px] font-black text-slate-500 uppercase tracking-widest">3. PAN Card</Text>
+                                    <View className="w-full aspect-video bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                        {selectedAgent?.kycDocuments?.panCard ? (
+                                            <Image source={{ uri: `${BASE_URL}${selectedAgent.kycDocuments.panCard}` }} className="w-full h-full" resizeMode="contain" />
+                                        ) : <View className="flex-1 items-center justify-center"><Text className="text-slate-400 font-bold">No Document</Text></View>}
+                                    </View>
+                                </View>
+                                <View className="mb-6 space-y-3">
+                                    <Text className="text-[10px] font-black text-slate-500 uppercase tracking-widest">4. {selectedAgent?.kycDocuments?.shopDoc?.category || 'Business Proof'}</Text>
+                                    <View className="w-full aspect-video bg-white rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                        {selectedAgent?.kycDocuments?.shopDoc?.url ? (
+                                            <Image source={{ uri: `${BASE_URL}${selectedAgent.kycDocuments.shopDoc.url}` }} className="w-full h-full" resizeMode="contain" />
+                                        ) : <View className="flex-1 items-center justify-center"><Text className="text-slate-400 font-bold">No Document</Text></View>}
+                                    </View>
+                                </View>
+                            </ScrollView>
+                            <View className="p-6 border-t border-slate-100 bg-white">
+                                {selectedAgent?.kycStatus === 'APPROVED' ? (
+                                    <Text className="text-center font-black text-emerald-500 uppercase tracking-widest">✓ Verified & Approved</Text>
+                                ) : (
+                                    <View>
+                                        <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Rejection Reason</Text>
+                                        <TextInput 
+                                            value={rejectReason} onChangeText={setRejectReason} placeholder="Required if rejecting..." placeholderTextColor="#9ca3af"
+                                            className="bg-slate-50 p-4 rounded-xl border border-slate-200 focus:border-rose-500 mb-4 h-20 text-slate-800 font-bold shadow-inner" multiline
+                                        />
+                                        <View className="flex-row gap-4">
+                                            <TouchableOpacity 
+                                                onPress={() => handleKycDecision('REJECTED')} disabled={kycLoading}
+                                                className="flex-1 py-4 bg-rose-50 rounded-xl items-center border border-rose-200 border-b-4 border-b-rose-300 active:scale-95">
+                                                <Text className="text-rose-600 font-black text-[10px] uppercase tracking-widest">Reject</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                onPress={() => handleKycDecision('APPROVED')} disabled={kycLoading}
+                                                className="flex-[2] py-4 bg-emerald-500 rounded-xl items-center border border-emerald-600 border-b-4 border-b-emerald-700 active:scale-95 shadow-lg shadow-emerald-500/30">
+                                                {kycLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-black text-[11px] uppercase tracking-widest">Approve & Verify</Text>}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     </View>
                 </Modal>

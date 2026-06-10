@@ -19,10 +19,10 @@ const CATEGORIES = [
 ];
 
 const PRIORITIES = [
-    { id: 'LOW', label: 'Low', color: '#64748b' },
-    { id: 'MEDIUM', label: 'Medium', color: '#f97316' },
-    { id: 'HIGH', label: 'High', color: '#ef4444' },
-    { id: 'URGENT', label: 'Urgent', color: '#991b1b' }
+    { id: 'LOW', label: 'Low', color: '#64748b', activeBg: '#f1f5f9', activeText: '#475569' },
+    { id: 'MEDIUM', label: 'Medium', color: '#f97316', activeBg: '#ffedd5', activeText: '#c2410c' },
+    { id: 'HIGH', label: 'High', color: '#ef4444', activeBg: '#fee2e2', activeText: '#b91c1c' },
+    { id: 'URGENT', label: 'Urgent', color: '#991b1b', activeBg: '#fecaca', activeText: '#7f1d1d' }
 ];
 
 export default function NewTicketScreen({ navigation }) {
@@ -49,7 +49,10 @@ export default function NewTicketScreen({ navigation }) {
 
             if (res.success) {
                 Toast.show({ type: 'success', text1: 'Success', text2: 'Ticket created successfully.' });
+                // We go back and refresh the list
                 navigation.goBack();
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: res.message || 'Failed to create ticket.' });
             }
         } catch (e) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to create ticket. Please try again.' });
@@ -63,11 +66,18 @@ export default function NewTicketScreen({ navigation }) {
             <StatusBar style={t.statusBar} />
             <SafeAreaView className="flex-1" edges={['top']}>
                 {/* Header */}
-                <View className="px-6 py-4 flex-row items-center border-b border-gray-100 bg-white">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="w-11 h-11 bg-white rounded-2xl items-center justify-center border border-slate-100 border-b-4 border-slate-200 shadow-sm mr-4 active:scale-95">
-                        <Ionicons name="close" size={24} color={t.text} />
+                <View className="px-6 py-4 flex-row items-center border-b border-slate-100 bg-white">
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={{ backgroundColor: t.card, borderColor: t.cardBorder }}
+                        className="w-11 h-11 rounded-2xl items-center justify-center border border-b-4 shadow-sm mr-4 active:scale-95"
+                    >
+                        <Ionicons name="close" size={22} color={t.text} />
                     </TouchableOpacity>
-                    <Text style={{ color: t.text }} className="text-xl font-black uppercase">New Support Request</Text>
+                    <View>
+                        <Text style={{ color: t.text }} className="text-lg font-black uppercase tracking-wide">New Support Request</Text>
+                        <Text style={{ color: t.textMuted }} className="font-bold text-[9px] uppercase tracking-widest">Submit a ticket to admin</Text>
+                    </View>
                 </View>
 
                 <KeyboardAvoidingView 
@@ -76,67 +86,94 @@ export default function NewTicketScreen({ navigation }) {
                 >
                     <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
                         {/* Category Picker */}
-                        <Text className="text-[10px] font-black text-gray-400 uppercase mb-4">Select Category</Text>
-                        <View className="flex-row flex-wrap gap-2 mb-8">
-                            {CATEGORIES.map(cat => (
-                                <TouchableOpacity 
-                                    key={cat.id} 
-                                    onPress={() => setCategory(cat.id)}
-                                    className={`px-5 py-3 rounded-2xl border active:scale-95 ${category === cat.id ? 'bg-[#1D4171] border-[#1D4171] border-b-4 border-[#11294a] shadow-md shadow-blue-900/20' : 'bg-white border-slate-100 border-b-4 border-slate-200 shadow-sm'}`}
-                                >
-                                    <View className="flex-row items-center">
-                                        <Text className="mr-2">{cat.icon}</Text>
-                                        <Text className={`text-[10px] font-black uppercase tracking-widest ${category === cat.id ? 'text-white' : 'text-gray-500'}`}>{cat.label}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
+                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest ml-1">Select Category</Text>
+                        <View className="flex-row flex-wrap gap-2 mb-6">
+                            {CATEGORIES.map(cat => {
+                                const isSelected = category === cat.id;
+                                return (
+                                    <TouchableOpacity 
+                                        key={cat.id} 
+                                        onPress={() => setCategory(cat.id)}
+                                        style={{ 
+                                            backgroundColor: isSelected ? '#1D4171' : '#F8FAFC',
+                                            borderColor: isSelected ? '#1D4171' : '#E2E8F0',
+                                        }}
+                                        className="px-4 py-3.5 rounded-2xl border active:scale-95 flex-row items-center"
+                                    >
+                                        <Text className="mr-2 text-sm">{cat.icon}</Text>
+                                        <Text 
+                                            style={{ color: isSelected ? '#fff' : '#64748b' }}
+                                            className="text-[10px] font-black uppercase tracking-wider"
+                                        >
+                                            {cat.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
 
                         {/* Priority Picker */}
-                        <Text className="text-[10px] font-black text-gray-400 uppercase mb-4">Set Priority</Text>
-                        <View className="flex-row gap-2 mb-8">
-                            {PRIORITIES.map(p => (
-                                <TouchableOpacity 
-                                    key={p.id} 
-                                    onPress={() => setPriority(p.id)}
-                                    className={`flex-1 py-3 rounded-2xl border items-center active:scale-95 ${priority === p.id ? 'bg-[#1D4171] border-[#1D4171] border-b-4 border-[#11294a] shadow-md shadow-blue-900/20' : 'bg-white border-slate-100 border-b-4 border-slate-200 shadow-sm'}`}
-                                >
-                                    <Text className={`text-[10px] font-black uppercase tracking-widest ${priority === p.id ? 'text-white' : 'text-gray-400'}`}>{p.label}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest ml-1">Set Priority</Text>
+                        <View className="flex-row gap-2 mb-6">
+                            {PRIORITIES.map(p => {
+                                const isSelected = priority === p.id;
+                                return (
+                                    <TouchableOpacity 
+                                        key={p.id} 
+                                        onPress={() => setPriority(p.id)}
+                                        style={{ 
+                                            backgroundColor: isSelected ? p.activeBg : '#F8FAFC',
+                                            borderColor: isSelected ? p.color : '#E2E8F0',
+                                        }}
+                                        className="flex-1 py-3.5 rounded-2xl border items-center active:scale-95"
+                                    >
+                                        <Text 
+                                            style={{ color: isSelected ? p.activeText : '#64748b' }}
+                                            className="text-[10px] font-black uppercase tracking-wider"
+                                        >
+                                            {p.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
 
                         {/* Subject */}
-                        <Text className="text-[10px] font-black text-gray-400 uppercase mb-4">Subject</Text>
+                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest ml-1">Subject</Text>
                         <TextInput
                             placeholder="Briefly describe the issue..."
                             value={subject}
                             onChangeText={setSubject}
-                            className="bg-slate-50 px-6 py-5 rounded-2xl border border-slate-100 shadow-inner text-sm font-black text-slate-800 mb-8"
+                            style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }}
+                            className="px-5 py-4.5 rounded-2xl border text-sm font-semibold text-slate-800 mb-6 shadow-sm"
+                            placeholderTextColor="#A0AEC0"
                         />
 
                         {/* Description */}
-                        <Text className="text-[10px] font-black text-gray-400 uppercase mb-4">Full Description</Text>
+                        <Text className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest ml-1">Full Description</Text>
                         <TextInput
-                            placeholder="Tell us more about the problem. If it is a booking issue, please include the PNR or Flight ID."
+                            placeholder="Provide a detailed description of your issue. Include PNR or Booking ID if applicable."
                             value={message}
                             onChangeText={setMessage}
                             multiline
                             numberOfLines={6}
                             textAlignVertical="top"
-                            className="bg-slate-50 px-6 py-5 rounded-2xl border border-slate-100 shadow-inner text-sm font-medium text-slate-800 h-40 mb-10"
+                            style={{ backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', height: 160 }}
+                            className="px-5 py-4.5 rounded-2xl border text-sm font-medium text-slate-800 mb-8 shadow-sm"
+                            placeholderTextColor="#A0AEC0"
                         />
 
                         {/* Submit Button */}
                         <TouchableOpacity 
                             onPress={handleSubmit}
                             disabled={loading}
-                            className="bg-[#F07E21] mb-20 py-6 rounded-2xl items-center border border-[#F07E21] border-b-[6px] border-[#c76014] shadow-xl shadow-orange-500/30 active:scale-95"
+                            style={{ backgroundColor: '#0B1A42', borderColor: '#0B1A42' }}
+                            className="mb-20 py-5 rounded-2xl items-center border border-b-4 border-b-[#060e24] shadow-lg active:scale-95"
                         >
                             {loading ? (
                                 <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                                <Text className="text-white font-black text-sm uppercase tracking-widest">Submit Support Ticket</Text>
+                                <Text className="text-white font-black text-xs uppercase tracking-widest">SUBMIT TICKET</Text>
                             )}
                         </TouchableOpacity>
                     </ScrollView>
