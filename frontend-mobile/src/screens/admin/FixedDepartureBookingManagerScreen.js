@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../utils/themeColors';
 import { adminService } from '../../services/api';
 import Toast from 'react-native-toast-message';
+import * as Clipboard from 'expo-clipboard';
 
 const { width } = Dimensions.get('window');
 
@@ -108,6 +109,26 @@ export default function FixedDepartureBookingManagerScreen({ navigation }) {
         } catch (error) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Payment verification failed' });
         }
+    };
+
+    const handleCopyPassengers = async (booking) => {
+        if (!booking.passengers || booking.passengers.length === 0) return;
+        let text = `Flight: ${booking.flightId?.airlineName} ${booking.flightId?.flightNumber} (${booking.flightId?.fromCity} -> ${booking.flightId?.toCity})\n`;
+        text += `Travel Date: ${new Date(booking.flightId?.departureDate || Date.now()).toLocaleDateString()}\n\n`;
+        
+        booking.passengers.forEach((p, i) => {
+            text += `Passenger ${i + 1}:\n`;
+            text += `Name: ${p.firstName || p.name} ${p.lastName || ''}\n`;
+            if (p.dob) text += `DOB: ${p.dob}\n`;
+            if (p.gender) text += `Gender: ${p.gender}\n`;
+            if (booking.isInternational) {
+                if (p.passportNumber) text += `Passport: ${p.passportNumber}\n`;
+                if (p.nationality) text += `Nationality: ${p.nationality}\n`;
+            }
+            text += `\n`;
+        });
+        await Clipboard.setStringAsync(text);
+        Toast.show({ type: 'success', text1: 'Copied!', text2: 'Passenger details copied to clipboard' });
     };
 
     const filteredBookings = bookings.filter(b => 
@@ -256,32 +277,50 @@ export default function FixedDepartureBookingManagerScreen({ navigation }) {
                                             {/* Decorative blob */}
                                             <View className="absolute top-0 right-0 w-24 h-24 bg-blue-100/50 rounded-full opacity-50 -mr-10 -mt-10" />
 
-                                            <View className="flex-row items-center gap-2 mb-4 border-b border-blue-100/50 pb-3">
-                                                <View className="bg-blue-100 p-1.5 rounded-lg">
-                                                    <Ionicons name="person" size={12} color="#1D4171" />
+                                            <View className="flex-row items-center justify-between mb-4 border-b border-blue-100/50 pb-3 relative z-10">
+                                                <View className="flex-row items-center gap-2">
+                                                    <View className="bg-blue-100 p-1.5 rounded-lg">
+                                                        <Ionicons name="person" size={12} color="#1D4171" />
+                                                    </View>
+                                                    <Text className="text-[10px] font-black text-blue-900 uppercase tracking-widest">PASSENGERS ({booking.passengers?.length || 0})</Text>
                                                 </View>
-                                                <Text className="text-[10px] font-black text-blue-900 uppercase tracking-widest">PASSENGERS ({booking.passengers?.length || 0})</Text>
+                                                {booking.passengers && booking.passengers.length > 0 && (
+                                                    <TouchableOpacity onPress={() => handleCopyPassengers(booking)} className="bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm active:scale-95">
+                                                        <Ionicons name="copy-outline" size={14} color="#48A0D4" />
+                                                    </TouchableOpacity>
+                                                )}
                                             </View>
 
                                             {firstPassenger ? (
                                                 <View>
-                                                    <View className="flex-row flex-wrap">
-                                                        <View className="w-1/2 mb-3">
-                                                            <Text className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Name</Text>
-                                                            <Text className="text-xs font-bold text-[#1D4171]">{firstPassenger.firstName} {firstPassenger.lastName}</Text>
+                                                    <View className="flex-col gap-2.5">
+                                                        <View className="flex-row items-center">
+                                                            <Text className="w-24 text-slate-500 font-medium text-[11px]">First Name</Text>
+                                                            <Text className="flex-1 font-black text-[#1D4171] text-xs">{firstPassenger.firstName || firstPassenger.name}</Text>
                                                         </View>
-                                                        <View className="w-1/2 mb-3">
-                                                            <Text className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Gender / DOB</Text>
-                                                            <Text className="text-xs font-bold text-[#1D4171]">{firstPassenger.gender?.charAt(0)} • {firstPassenger.dob || '-'}</Text>
+                                                        <View className="flex-row items-center">
+                                                            <Text className="w-24 text-slate-500 font-medium text-[11px]">Last Name</Text>
+                                                            <Text className="flex-1 font-black text-[#1D4171] text-xs">{firstPassenger.lastName || '-'}</Text>
+                                                        </View>
+                                                        <View className="flex-row items-center">
+                                                            <Text className="w-24 text-slate-500 font-medium text-[11px]">Date of Birth</Text>
+                                                            <Text className="flex-1 font-bold text-slate-700 text-xs">{firstPassenger.dob || '-'}</Text>
+                                                        </View>
+                                                        <View className="flex-row items-center">
+                                                            <Text className="w-24 text-slate-500 font-medium text-[11px]">Gender</Text>
+                                                            <Text className="flex-1 font-bold text-slate-700 text-xs">{firstPassenger.gender || '-'}</Text>
                                                         </View>
                                                         {booking.isInternational && (
-                                                            <View className="w-full">
-                                                                <Text className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Passport</Text>
+                                                            <>
                                                                 <View className="flex-row items-center">
-                                                                    <Text className="text-[10px] font-bold text-[#1D4171] bg-white px-2 py-1 rounded-md border border-slate-200">{firstPassenger.passportNumber || 'N/A'}</Text>
-                                                                    <Text className="text-[10px] font-bold text-slate-500 ml-2">({firstPassenger.nationality || 'N/A'})</Text>
+                                                                    <Text className="w-24 text-slate-500 font-medium text-[11px]">Passport No.</Text>
+                                                                    <Text className="flex-1 font-bold text-slate-800 text-xs">{firstPassenger.passportNumber || '-'}</Text>
                                                                 </View>
-                                                            </View>
+                                                                <View className="flex-row items-center">
+                                                                    <Text className="w-24 text-slate-500 font-medium text-[11px]">Nationality</Text>
+                                                                    <Text className="flex-1 font-bold text-slate-700 text-xs">{firstPassenger.nationality || '-'}</Text>
+                                                                </View>
+                                                            </>
                                                         )}
                                                     </View>
                                                     {extraPassengers > 0 && (

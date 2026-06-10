@@ -105,6 +105,25 @@ const FixedDepartureBookingManager = () => {
         toast.success('Copied to clipboard');
     };
 
+    const handleCopyPassengers = (booking) => {
+        if (!booking.passengers || booking.passengers.length === 0) return;
+        let text = `Flight: ${booking.flightId?.airlineName} ${booking.flightId?.flightNumber} (${booking.flightId?.fromCity} -> ${booking.flightId?.toCity})\n`;
+        text += `Travel Date: ${new Date(booking.flightId?.departureDate || Date.now()).toLocaleDateString()}\n\n`;
+        
+        booking.passengers.forEach((p, i) => {
+            text += `Passenger ${i + 1}:\n`;
+            text += `Name: ${p.firstName || p.name} ${p.lastName || ''}\n`;
+            if (p.dob) text += `DOB: ${p.dob}\n`;
+            if (p.gender) text += `Gender: ${p.gender}\n`;
+            if (booking.isInternational) {
+                if (p.passportNumber) text += `Passport: ${p.passportNumber}\n`;
+                if (p.nationality) text += `Nationality: ${p.nationality}\n`;
+            }
+            text += `\n`;
+        });
+        copyToClipboard(text);
+    };
+
     const filteredBookings = bookings.filter(b => 
         b.agentId?.agencyName?.toLowerCase().includes(filter.toLowerCase()) ||
         b.pnr?.toLowerCase().includes(filter.toLowerCase()) ||
@@ -234,42 +253,42 @@ const FixedDepartureBookingManager = () => {
                                     <div className="bg-gradient-to-br from-blue-50/40 to-slate-50/80 border border-blue-100/50 rounded-2xl p-5 h-full relative overflow-hidden group/pass">
                                         <div className="absolute top-0 right-0 w-24 h-24 bg-blue-100/30 rounded-full blur-2xl -mr-10 -mt-10 transition-transform group-hover/pass:scale-150 duration-700"></div>
                                         
-                                        <div className="flex items-center gap-3 mb-5 border-b border-blue-100/50 pb-3">
-                                            <div className="bg-blue-100 text-blue-600 p-2 rounded-xl">
-                                                <FaUser className="text-xs" />
+                                        <div className="flex items-center justify-between mb-5 border-b border-blue-100/50 pb-3 relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-blue-100 text-blue-600 p-2 rounded-xl">
+                                                    <FaUser className="text-xs" />
+                                                </div>
+                                                <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-[0.15em]">PASSENGER DETAILS</h3>
                                             </div>
-                                            <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-[0.15em]">PASSENGER DETAILS</h3>
+                                            {booking.passengers && booking.passengers.length > 0 && (
+                                                <button onClick={() => handleCopyPassengers(booking)} className="text-[#48A0D4] hover:text-[#1D4171] bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm transition-colors active:scale-95" title="Copy all passengers">
+                                                    <FaCopy className="text-xs" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         {firstPassenger ? (
                                             <>
-                                                <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-xs relative z-10">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">First Name</span>
-                                                        <span className="font-black text-[#1D4171] text-sm">{firstPassenger.firstName || firstPassenger.name}</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">Last Name</span>
-                                                        <span className="font-black text-[#1D4171] text-sm">{firstPassenger.lastName || '-'}</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">DOB</span>
-                                                        <span className="font-bold text-slate-700">{firstPassenger.dob || '-'}</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">Gender</span>
-                                                        <span className="font-bold text-slate-700">{firstPassenger.gender || '-'}</span>
-                                                    </div>
+                                                <div className="grid grid-cols-[100px_1fr] gap-y-2.5 text-xs relative z-10 items-center">
+                                                    <span className="text-slate-500 font-medium text-[11px]">First Name</span>
+                                                    <span className="font-black text-[#1D4171]">{firstPassenger.firstName || firstPassenger.name}</span>
+                                                    
+                                                    <span className="text-slate-500 font-medium text-[11px]">Last Name</span>
+                                                    <span className="font-black text-[#1D4171]">{firstPassenger.lastName || '-'}</span>
+                                                    
+                                                    <span className="text-slate-500 font-medium text-[11px]">Date of Birth</span>
+                                                    <span className="font-bold text-slate-700">{firstPassenger.dob || '-'}</span>
+                                                    
+                                                    <span className="text-slate-500 font-medium text-[11px]">Gender</span>
+                                                    <span className="font-bold text-slate-700">{firstPassenger.gender || '-'}</span>
+                                                    
                                                     {booking.isInternational && (
                                                         <>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">Passport No.</span>
-                                                                <span className="font-black text-slate-800 bg-white px-2 py-0.5 rounded-md border border-slate-200 self-start">{firstPassenger.passportNumber || '-'}</span>
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="text-slate-400 font-black text-[9px] uppercase tracking-widest">Nationality</span>
-                                                                <span className="font-bold text-slate-700">{firstPassenger.nationality || '-'}</span>
-                                                            </div>
+                                                            <span className="text-slate-500 font-medium text-[11px]">Passport No.</span>
+                                                            <span className="font-bold text-slate-800">{firstPassenger.passportNumber || '-'}</span>
+                                                            
+                                                            <span className="text-slate-500 font-medium text-[11px]">Nationality</span>
+                                                            <span className="font-bold text-slate-700">{firstPassenger.nationality || '-'}</span>
                                                         </>
                                                     )}
                                                 </div>
@@ -480,31 +499,42 @@ const FixedDepartureBookingManager = () => {
                             {/* PASSENGER DETAILS */}
                             <div className="bg-gradient-to-br from-blue-50/40 to-slate-50/80 rounded-2xl p-4 mb-5 border border-blue-100/50 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-20 h-20 bg-blue-100/30 rounded-full blur-xl -mr-8 -mt-8"></div>
-                                <div className="flex items-center gap-2 mb-3 border-b border-blue-100/50 pb-2">
-                                    <div className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-                                        <FaUser className="text-[10px]" />
+                                <div className="flex items-center justify-between mb-3 border-b border-blue-100/50 pb-2 relative z-10">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-blue-100 text-blue-600 p-1.5 rounded-lg">
+                                            <FaUser className="text-[10px]" />
+                                        </div>
+                                        <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-widest">PASSENGERS ({booking.passengers?.length || 0})</h3>
                                     </div>
-                                    <h3 className="text-[10px] font-black text-blue-900 uppercase tracking-widest">PASSENGERS ({booking.passengers?.length || 0})</h3>
+                                    {booking.passengers && booking.passengers.length > 0 && (
+                                        <button onClick={() => handleCopyPassengers(booking)} className="text-[#48A0D4] hover:text-[#1D4171] bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm transition-colors active:scale-95">
+                                            <FaCopy className="text-xs" />
+                                        </button>
+                                    )}
                                 </div>
                                 {firstPassenger ? (
                                     <div>
-                                        <div className="grid grid-cols-2 gap-3 relative z-10">
-                                            <div>
-                                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Name</div>
-                                                <div className="text-xs font-bold text-[#1D4171]">{firstPassenger.firstName} {firstPassenger.lastName}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Gender / DOB</div>
-                                                <div className="text-xs font-bold text-[#1D4171]">{firstPassenger.gender?.charAt(0)} • {firstPassenger.dob || '-'}</div>
-                                            </div>
+                                        <div className="grid grid-cols-[100px_1fr] gap-y-2.5 relative z-10 items-center text-xs">
+                                            <span className="text-slate-500 font-medium text-[11px]">First Name</span>
+                                            <span className="font-black text-[#1D4171]">{firstPassenger.firstName || firstPassenger.name}</span>
+                                            
+                                            <span className="text-slate-500 font-medium text-[11px]">Last Name</span>
+                                            <span className="font-black text-[#1D4171]">{firstPassenger.lastName || '-'}</span>
+                                            
+                                            <span className="text-slate-500 font-medium text-[11px]">Date of Birth</span>
+                                            <span className="font-bold text-slate-700">{firstPassenger.dob || '-'}</span>
+                                            
+                                            <span className="text-slate-500 font-medium text-[11px]">Gender</span>
+                                            <span className="font-bold text-slate-700">{firstPassenger.gender || '-'}</span>
+                                            
                                             {booking.isInternational && (
-                                                <div className="col-span-2">
-                                                    <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Passport</div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="text-[10px] font-bold text-[#1D4171] bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">{firstPassenger.passportNumber || 'N/A'}</div>
-                                                        <div className="text-[10px] font-bold text-slate-500">({firstPassenger.nationality || 'N/A'})</div>
-                                                    </div>
-                                                </div>
+                                                <>
+                                                    <span className="text-slate-500 font-medium text-[11px]">Passport No.</span>
+                                                    <span className="font-bold text-slate-800">{firstPassenger.passportNumber || '-'}</span>
+                                                    
+                                                    <span className="text-slate-500 font-medium text-[11px]">Nationality</span>
+                                                    <span className="font-bold text-slate-700">{firstPassenger.nationality || '-'}</span>
+                                                </>
                                             )}
                                         </div>
                                         {additionalPassengersCount > 0 && (
