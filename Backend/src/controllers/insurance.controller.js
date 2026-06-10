@@ -1,4 +1,4 @@
-const InsurancePackage = require('../models/InsurancePackage.model');
+const InsurancePackage = require('../Models/InsurancePackage.model');
 const NodeCache = require('node-cache');
 const insuranceCache = new NodeCache({ stdTTL: 600 }); // Cache for 10 minutes
 
